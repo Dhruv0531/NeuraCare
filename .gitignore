@@ -1,0 +1,52 @@
+# =========================
+# FRONTEND (React)
+# =========================
+/node_modules
+/.pnp
+.pnp.js
+/build
+/coverage
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# =========================
+# BACKEND (Python / FastAPI)
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# Virtual environment
+venv/
+.env/
+
+# =========================
+# SYSTEM FILES
+# =========================
+.DS_Store
+desktop.ini
+Thumbs.db
+
+# =========================
+# IDE FILES (optional)
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Mongo / Logs (safety)
+# =========================
+*.log
