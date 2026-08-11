@@ -1,0 +1,94 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { api, Assessment } from '@/lib/api';
+import ConditionCard from '@/components/ConditionCard';
+import ShapChart from '@/components/ShapChart';
+import RadarChartComponent from '@/components/RadarChartComponent';
+import Disclaimer from '@/components/Disclaimer';
+import RiskBadge from '@/components/RiskBadge';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import { ArrowLeft } from 'lucide-react';
+
+const CONDITIONS = [
+  { key: 'depression', label: 'Depression', questionnaire: 'PHQ-9' },
+  { key: 'anxiety', label: 'Anxiety', questionnaire: 'GAD-7' },
+  { key: 'stress', label: 'Stress', questionnaire: 'DASS-21' },
+  { key: 'insomnia', label: 'Insomnia', questionnaire: 'ISI' },
+] as const;
+
+export default function ResultDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [shapTab, setShapTab] = useState<'depression' | 'anxiety' | 'stress' | 'insomnia'>('depression');
+
+  useEffect(() => {
+    api.getAssessment(id)
+      .then(setAssessment)
+      .catch(() => setError('Assessment not found or you do not have access.'))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) return <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]"><LoadingSpinner text="Loading assessment..." /></div>;
+  if (error || !assessment) return (
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] gap-4">
+      <p className="text-text-muted">{error}</p>
+      <button onClick={() => router.push('/history')} className="text-primary font-semibold hover:underline">Back to History</button>
+    </div>
+  );
+
+  return (
+    <div className="min-h-[calc(100vh-4rem)] bg-background py-8 px-4">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <button onClick={() => router.push('/history')} className="flex items-center gap-2 text-text-muted hover:text-text-main transition-colors text-sm font-medium">
+          <ArrowLeft className="h-4 w-4" /> Back to History
+        </button>
+
+        <Disclaimer variant="warning" />
+
+        <div className="bg-card rounded-3xl border border-border shadow-card p-8">
+          <h1 className="text-2xl font-bold text-text-main mb-1">Assessment Results</h1>
+          <p className="text-text-muted text-sm mb-4">
+            {new Date(assessment.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CONDITIONS.map(c => (
+              <div key={c.key} className="flex items-center gap-2 bg-background px-3 py-1.5 rounded-full border border-border">
+                <span className="text-xs text-text-muted">{c.label}:</span>
+                <RiskBadge label={assessment[c.key].label} size="sm" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          {CONDITIONS.map(c => (
+            <ConditionCard key={c.key} condition={c.label as 'Depression' | 'Anxiety' | 'Stress' | 'Insomnia'} questionnaire={c.questionnaire} result={assessment[c.key]} />
+          ))}
+        </div>
+
+        <div className="bg-card rounded-3xl border border-border shadow-card p-8">
+          <h2 className="text-xl font-bold text-text-main mb-6">Risk Profile</h2>
+          <RadarChartComponent assessment={assessment} />
+        </div>
+
+        <div className="bg-card rounded-3xl border border-border shadow-card p-8">
+          <h2 className="text-xl font-bold text-text-main mb-4">Key Factors</h2>
+          <div className="flex flex-wrap gap-2 mb-6">
+            {(['depression', 'anxiety', 'stress', 'insomnia'] as const).map(tab => (
+              <button key={tab} onClick={() => setShapTab(tab)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 capitalize ${shapTab === tab ? 'bg-primary text-white' : 'bg-background border border-border text-text-muted hover:text-text-main'}`}>
+                {tab}
+              </button>
+            ))}
+          </div>
+          <ShapChart data={assessment.shapValues[shapTab]} />
+        </div>
+      </div>
+    </div>
+  );
+}
