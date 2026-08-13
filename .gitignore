@@ -17,6 +17,12 @@ out/
 build/
 dist/
 
+# Large Model Binary Weights (Use Git LFS or local storage)
+emotion_model/*.safetensors
+emotion_model/*.bin
+emotion_model/*.h5
+emotion_model/*.pth
+
 # Python Cache & Virtual Environments
 __pycache__/
 */__pycache__/
