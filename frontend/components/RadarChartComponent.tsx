@@ -41,7 +41,7 @@ export default function RadarChartComponent({ assessment }: RadarChartComponentP
           strokeWidth={2}
         />
         <Tooltip
-          formatter={(value: number) => [`${value}%`, 'Risk Score']}
+          formatter={(value: any) => [`${value ?? 0}%`, 'Risk Score']}
           contentStyle={{
             borderRadius: '12px',
             border: '1px solid #ECECEC',

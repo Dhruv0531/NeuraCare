@@ -42,8 +42,8 @@ export default function Navbar() {
             {!isAuthenticated ? (
               <>
                 <Link href="/" className={linkCls('/')}>Home</Link>
-                <Link href="/#how-it-works" className="text-sm font-medium text-text-muted hover:text-text-main transition-colors">How It Works</Link>
-                <Link href="/#about" className="text-sm font-medium text-text-muted hover:text-text-main transition-colors">About</Link>
+                <Link href="/history" className={linkCls('/history')}>History</Link>
+                <Link href="/clinician" className={linkCls('/clinician')}>Clinician Portal</Link>
                 <Link href="/login" className={linkCls('/login')}>Login</Link>
                 <Link
                   href="/assessment"

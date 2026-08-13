@@ -8,6 +8,12 @@ const riskResultSchema = new mongoose.Schema({
     moderate: Number,
     high: Number,
   },
+  shap_explanation: [{
+    feature: String,
+    description: String,
+    value: Number,
+    impact: Number
+  }]
 }, { _id: false });
 
 const shapFeatureSchema = new mongoose.Schema({
@@ -16,12 +22,14 @@ const shapFeatureSchema = new mongoose.Schema({
 }, { _id: false });
 
 const assessmentSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  overallScore: { type: Number, required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
+  overallScore: { type: Number, default: 50 },
   depression: riskResultSchema,
   anxiety: riskResultSchema,
   stress: riskResultSchema,
   insomnia: riskResultSchema,
+  sleep: { type: mongoose.Schema.Types.Mixed },
+  emotion: { type: mongoose.Schema.Types.Mixed },
   shapValues: {
     depression: [shapFeatureSchema],
     anxiety: [shapFeatureSchema],

@@ -2,149 +2,118 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ClipboardList, Eye } from 'lucide-react';
-import { api, Assessment } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
-import TrendChart from '@/components/TrendChart';
+import { Calendar, Brain, Activity, Sparkles, Clock, ArrowRight } from 'lucide-react';
 import RiskBadge from '@/components/RiskBadge';
-import { SkeletonCard } from '@/components/LoadingSpinner';
-
-const CONDITIONS = ['depression', 'anxiety', 'stress', 'insomnia'] as const;
+import { api, Assessment } from '@/lib/api';
 
 export default function HistoryPage() {
-  const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [data, setData] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, isLoading, router]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
     api.getHistory()
-      .then(data => setAssessments(data))
-      .catch(() => setAssessments([]))
-      .finally(() => setLoading(false));
-  }, [isAuthenticated]);
+      .then(res => {
+        setData(res);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+  }, []);
 
-  if (isLoading || loading) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 py-10 space-y-6">
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-    );
-  }
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background py-8 px-4">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-text-main">Your Assessment History</h1>
-          <p className="text-text-muted mt-1">Track your mental health over time</p>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-text-main mb-1">Assessment History</h1>
+          <p className="text-sm text-text-muted">Longitudinal Score History (Fetched Live from MongoDB Atlas)</p>
         </div>
 
-        {assessments.length === 0 ? (
-          /* Empty state */
-          <div className="bg-card rounded-3xl border border-border shadow-card p-16 flex flex-col items-center text-center">
-            <div className="h-16 w-16 rounded-2xl bg-primary-light flex items-center justify-center mb-4">
-              <ClipboardList className="h-8 w-8 text-primary" />
-            </div>
-            <h2 className="text-xl font-bold text-text-main mb-2">No assessments yet</h2>
-            <p className="text-text-muted mb-6 max-w-sm">Take your first assessment to start tracking your mental health journey over time.</p>
-            <Link href="/assessment" className="bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-primary/25">
-              Take Assessment Now
-            </Link>
+        {loading ? (
+          <div className="bg-white rounded-3xl border border-border p-12 text-center text-text-muted">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-border border-t-primary mx-auto mb-4" />
+            Loading assessment history from MongoDB...
+          </div>
+        ) : data.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-border p-12 text-center text-text-muted space-y-4">
+            <Clock className="h-12 w-12 text-text-muted mx-auto" />
+            <h3 className="font-bold text-text-main text-lg">No History Records Found</h3>
+            <p className="text-sm max-w-sm mx-auto">You have not completed any mental health risk assessments yet.</p>
+            <button
+              onClick={() => router.push('/assessment')}
+              className="inline-flex items-center gap-2 bg-primary text-white font-semibold px-5 py-3 rounded-xl hover:bg-primary-dark transition-all duration-200"
+            >
+              Take Assessment <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Trend chart */}
-            {assessments.length > 1 ? (
-              <div className="bg-card rounded-3xl border border-border shadow-card p-8">
-                <h2 className="text-xl font-bold text-text-main mb-1">Risk Score Trend</h2>
-                <p className="text-sm text-text-muted mb-6">How your mental health risk has changed over time</p>
-                <TrendChart assessments={assessments} />
-              </div>
-            ) : (
-              <div className="bg-primary-light border border-primary/20 rounded-2xl p-4 text-sm text-primary">
-                Complete more assessments to see your trend over time.
-              </div>
-            )}
+          <div className="space-y-4">
+            {data.map((item, index) => {
+              const depLevel = item.depression?.label || 'Low';
+              const anxLevel = item.anxiety?.label || 'Low';
+              const strLevel = item.stress?.label || 'Low';
+              const sleepLevel = item.sleep?.level || item.insomnia?.label || 'Low';
 
-            {/* Table */}
-            <div className="bg-card rounded-3xl border border-border shadow-card overflow-hidden">
-              <div className="p-6 border-b border-border">
-                <h2 className="text-xl font-bold text-text-main">Past Assessments</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-background border-b border-border">
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-text-muted uppercase tracking-wide">Date</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wide">Depression</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wide">Anxiety</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wide">Stress</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wide">Insomnia</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wide">Overall</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wide">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {[...assessments].reverse().map(a => {
-                      const hasHigh = CONDITIONS.some(c => a[c].label === 'High');
-                      const allLow = CONDITIONS.every(c => a[c].label === 'Low');
-                      const rowBg = hasHigh ? 'bg-red-50/50' : allLow ? 'bg-green-50/50' : 'bg-white';
+              const levels = [depLevel, anxLevel, strLevel];
+              const overallRisk = levels.includes('High') ? 'High' : (levels.includes('Moderate') ? 'Moderate' : 'Low');
 
-                      return (
-                        <tr key={a._id} className={`hover:bg-background transition-colors ${rowBg}`}>
-                          <td className="px-6 py-4 font-medium text-text-main whitespace-nowrap">
-                            {new Date(a.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </td>
-                          {CONDITIONS.map(c => (
-                            <td key={c} className="px-4 py-4">
-                              <RiskBadge label={a[c].label} size="sm" />
-                            </td>
-                          ))}
-                          <td className="px-4 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-16 bg-border rounded-full overflow-hidden">
-                                <div
-                                  className="h-full rounded-full"
-                                  style={{
-                                    width: `${a.overallScore}%`,
-                                    backgroundColor: a.overallScore < 33 ? '#10B981' : a.overallScore < 66 ? '#F59E0B' : '#EF4444',
-                                  }}
-                                />
-                              </div>
-                              <span className="text-xs font-semibold text-text-muted">{a.overallScore}%</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4">
-                            <Link
-                              href={`/results/${a._id}`}
-                              className="inline-flex items-center gap-1.5 text-primary font-semibold text-xs hover:underline"
-                            >
-                              <Eye className="h-3.5 w-3.5" /> View Report
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+              const emotions = item.emotion?.emotions || [];
 
-            <div className="pb-8">
-              <Link href="/assessment" className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-semibold px-5 py-3 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-primary/25">
-                <ClipboardList className="h-4 w-4" /> Take New Assessment
-              </Link>
-            </div>
+              return (
+                <div key={index} className="bg-white rounded-2xl border border-border p-6 shadow-sm space-y-4 hover:border-primary/30 transition-all">
+                  <div className="flex flex-wrap justify-between items-center gap-2">
+                    <div className="flex items-center gap-2 text-xs text-text-muted">
+                      <Calendar className="h-4 w-4" />
+                      {formatDate(item.createdAt)}
+                    </div>
+                    <RiskBadge label={overallRisk} size="md" />
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs border-y border-border/60 py-3">
+                    <div>
+                      <span className="text-text-muted block mb-1">Depression</span>
+                      <strong className="text-sm text-text-main">{depLevel}</strong>
+                    </div>
+                    <div>
+                      <span className="text-text-muted block mb-1">Anxiety</span>
+                      <strong className="text-sm text-text-main">{anxLevel}</strong>
+                    </div>
+                    <div>
+                      <span className="text-text-muted block mb-1">Stress</span>
+                      <strong className="text-sm text-text-main">{strLevel}</strong>
+                    </div>
+                    <div>
+                      <span className="text-text-muted block mb-1">Sleep Quality</span>
+                      <strong className="text-sm text-text-main">{sleepLevel}</strong>
+                    </div>
+                  </div>
+
+                  {emotions.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap text-xs pt-1">
+                      <Sparkles className="h-3.5 w-3.5 text-secondary flex-shrink-0" />
+                      <span className="text-text-muted">GoEmotions:</span>
+                      {emotions.map((e, idx) => (
+                        <span key={idx} className="bg-purple-50 text-purple-700 font-medium px-2.5 py-1 rounded-lg">
+                          {e.label}: {Math.round(e.score * 100)}%
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

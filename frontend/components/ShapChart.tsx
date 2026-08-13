@@ -52,7 +52,7 @@ export default function ShapChart({ data, title }: ShapChartProps) {
             width={135}
           />
           <Tooltip
-            formatter={(value: number) => [value.toFixed(3), 'SHAP Value']}
+            formatter={(value: any) => [Number(value ?? 0).toFixed(3), 'SHAP Value']}
             contentStyle={{
               borderRadius: '12px',
               border: '1px solid #ECECEC',

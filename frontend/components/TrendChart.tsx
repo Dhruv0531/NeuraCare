@@ -41,7 +41,7 @@ export default function TrendChart({ assessments }: TrendChartProps) {
             boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
             fontSize: 13,
           }}
-          formatter={(value: number) => [`${value}%`]}
+          formatter={(value: any) => [`${value ?? 0}%`]}
         />
         <Legend wrapperStyle={{ fontSize: 13, paddingTop: 16 }} />
         {lines.map(l => (

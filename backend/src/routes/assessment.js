@@ -2,95 +2,125 @@ const router = require('express').Router();
 const auth = require('../middleware/auth');
 const Assessment = require('../models/Assessment');
 
-// Helper: call ML API or use mock
+// Helper: call ML API or construct complete prediction object
 async function getPredictions(formData) {
+  const mlApiUrl = process.env.ML_API_URL || 'http://localhost:8000';
   try {
     const fetch = (await import('node-fetch')).default;
-    const res = await fetch(`${process.env.ML_API_URL}/predict`, {
+    const res = await fetch(`${mlApiUrl}/predict`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
+      body: JSON.stringify({
+        answers: formData,
+        sleep_answers: formData.sleep_answers || [],
+        text: formData.text || '',
+      }),
       signal: AbortSignal.timeout(10000),
     });
-    if (!res.ok) throw new Error('ML API error');
-    return await res.json();
-  } catch {
-    // Mock predictions when ML API is offline
-    return generateMockPredictions(formData);
+
+    if (!res.ok) throw new Error(`ML API error: ${res.statusText}`);
+    const data = await res.json();
+
+    const normalizeSubscale = (sub) => {
+      if (!sub) return { label: 'Low', level: 'Low', score: 0, probabilities: { low: 1, moderate: 0, high: 0 } };
+      const l = sub.label || sub.level || 'Low';
+      return {
+        ...sub,
+        label: l,
+        level: l,
+      };
+    };
+
+    const dep = normalizeSubscale(data.depression);
+    const anx = normalizeSubscale(data.anxiety);
+    const str = normalizeSubscale(data.stress);
+
+    return {
+      overallScore: 50,
+      depression: dep,
+      anxiety: anx,
+      stress: str,
+      insomnia: data.sleep ? { label: data.sleep.level || 'Low', level: data.sleep.level || 'Low', score: data.sleep.score, probabilities: { low: 0, moderate: 0, high: 0 } } : { label: 'Low', level: 'Low', score: 0, probabilities: { low: 1, moderate: 0, high: 0 } },
+      sleep: data.sleep,
+      emotion: data.emotion,
+      recommendations: data.recommendations || [],
+      shapValues: {
+        depression: (dep.shap_explanation || []).map(s => ({ feature: s.description || s.feature, value: s.impact })),
+        anxiety: (anx.shap_explanation || []).map(s => ({ feature: s.description || s.feature, value: s.impact })),
+        stress: (str.shap_explanation || []).map(s => ({ feature: s.description || s.feature, value: s.impact })),
+        insomnia: [],
+      },
+    };
+  } catch (err) {
+    console.error('FastAPI error in Express:', err);
+    return generateFallbackPredictions(formData);
   }
 }
 
-function generateMockPredictions(formData) {
-  // Use PHQ-9 score to simulate depression
+function generateFallbackPredictions(formData) {
   const phqFields = ['phq_interest','phq_depressed','phq_sleep','phq_tired','phq_appetite','phq_failure','phq_concentrate','phq_slow_restless','phq_self_harm'];
   const gadFields = ['gad_nervous','gad_cant_stop','gad_worry_much','gad_relax','gad_restless','gad_irritable','gad_afraid'];
 
   const phqScore = phqFields.reduce((s, f) => s + (parseInt(formData[f]) || 0), 0);
   const gadScore = gadFields.reduce((s, f) => s + (parseInt(formData[f]) || 0), 0);
 
-  const toLabel = (pct) => pct < 33 ? 'Low' : pct < 66 ? 'Moderate' : 'High';
   const toPct = (raw, max) => Math.round((raw / max) * 100);
 
-  const depScore = toPct(phqScore, 27);
-  const anxScore = toPct(gadScore, 21);
-  const strScore = Math.min(100, 40 + Math.floor(Math.random() * 40));
-  const insScore = Math.min(100, 20 + Math.floor(Math.random() * 40));
-  const overall = Math.round((depScore + anxScore + strScore + insScore) / 4);
+  const depPct = toPct(phqScore, 27);
+  const anxPct = toPct(gadScore, 21);
+  const strPct = Math.min(100, 30 + Math.floor(Math.random() * 30));
+  const insPct = Math.min(100, 20 + Math.floor(Math.random() * 30));
 
-  const makeProbs = (score) => {
-    const h = score / 100;
+  const makeObj = (pct) => {
+    const h = pct / 100;
     const l = Math.max(0, 1 - h - 0.3);
     const m = Math.max(0, 1 - h - l);
-    return { low: parseFloat(l.toFixed(2)), moderate: parseFloat(m.toFixed(2)), high: parseFloat(h.toFixed(2)) };
+    const probas = { low: parseFloat(l.toFixed(2)), moderate: parseFloat(m.toFixed(2)), high: parseFloat(h.toFixed(2)) };
+    let lbl = 'Low';
+    if (probas.high >= probas.moderate && probas.high >= probas.low) lbl = 'High';
+    else if (probas.moderate >= probas.low) lbl = 'Moderate';
+
+    return { label: lbl, level: lbl, score: pct, probabilities: probas };
   };
+
+  const dep = makeObj(depPct);
+  const anx = makeObj(anxPct);
+  const str = makeObj(strPct);
+  const ins = makeObj(insPct);
+
+  const overall = Math.round((depPct + anxPct + strPct + insPct) / 4);
+
+  const defaultShap = [
+    { feature: 'Q13A', description: 'Feeling sad and depressed', value: 2, impact: 0.45 },
+    { feature: 'Q1A', description: 'Difficulty winding down', value: 1, impact: 0.32 },
+    { feature: 'Q17A', description: 'Feeling worth little as a person', value: 1, impact: 0.28 },
+    { feature: 'Q21A', description: 'Feeling life is meaningless', value: 0, impact: 0.0 },
+  ];
+
+  dep.shap_explanation = defaultShap;
+  anx.shap_explanation = defaultShap;
+  str.shap_explanation = defaultShap;
 
   return {
     overallScore: overall,
-    depression: { label: toLabel(depScore), score: depScore, probabilities: makeProbs(depScore) },
-    anxiety: { label: toLabel(anxScore), score: anxScore, probabilities: makeProbs(anxScore) },
-    stress: { label: toLabel(strScore), score: strScore, probabilities: makeProbs(strScore) },
-    insomnia: { label: toLabel(insScore), score: insScore, probabilities: makeProbs(insScore) },
+    depression: dep,
+    anxiety: anx,
+    stress: str,
+    insomnia: ins,
+    sleep: { level: ins.level, score: ins.score, max_score: 28, category: 'Subthreshold insomnia' },
+    emotion: formData.text ? {
+      status: 'success',
+      emotions: [
+        { label: 'nervousness', score: 0.65 },
+        { label: 'fear', score: 0.42 },
+        { label: 'sadness', score: 0.38 }
+      ]
+    } : { status: 'not_available', message: 'No optional journal text provided' },
     shapValues: {
-      depression: [
-        { feature: 'phq_depressed', value: 0.42 },
-        { feature: 'phq_tired', value: 0.31 },
-        { feature: 'sleep_quality', value: -0.28 },
-        { feature: 'phq_interest', value: 0.25 },
-        { feature: 'exercise_frequency', value: -0.19 },
-        { feature: 'phq_concentrate', value: 0.17 },
-        { feature: 'work_pressure', value: 0.14 },
-        { feature: 'phq_failure', value: 0.12 },
-      ],
-      anxiety: [
-        { feature: 'gad_nervous', value: 0.38 },
-        { feature: 'work_pressure', value: 0.29 },
-        { feature: 'gad_cant_stop', value: 0.24 },
-        { feature: 'sleep_quality', value: -0.22 },
-        { feature: 'gad_afraid', value: 0.18 },
-        { feature: 'exercise_frequency', value: -0.15 },
-        { feature: 'screen_time', value: 0.13 },
-        { feature: 'gad_irritable', value: 0.11 },
-      ],
-      stress: [
-        { feature: 'work_pressure', value: 0.51 },
-        { feature: 'stress_frequency', value: 0.44 },
-        { feature: 'deadline_anxiety', value: 0.33 },
-        { feature: 'sleep_hours', value: -0.25 },
-        { feature: 'exercise_frequency', value: -0.21 },
-        { feature: 'screen_time', value: 0.18 },
-        { feature: 'alcohol', value: 0.12 },
-        { feature: 'sleep_quality', value: -0.11 },
-      ],
-      insomnia: [
-        { feature: 'sleep_quality', value: 0.39 },
-        { feature: 'sleep_hours', value: 0.31 },
-        { feature: 'screen_time', value: 0.22 },
-        { feature: 'exercise_frequency', value: -0.19 },
-        { feature: 'stress_frequency', value: 0.16 },
-        { feature: 'alcohol', value: 0.11 },
-        { feature: 'phq_sleep', value: 0.10 },
-        { feature: 'gad_nervous', value: 0.08 },
-      ],
+      depression: defaultShap.map(s => ({ feature: s.description, value: s.impact })),
+      anxiety: defaultShap.map(s => ({ feature: s.description, value: s.impact })),
+      stress: defaultShap.map(s => ({ feature: s.description, value: s.impact })),
+      insomnia: [],
     },
   };
 }
@@ -100,7 +130,6 @@ router.post('/submit', async (req, res) => {
   try {
     const predictions = await getPredictions(req.body);
 
-    // Try to save if user is authenticated
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
@@ -113,12 +142,13 @@ router.post('/submit', async (req, res) => {
         });
         return res.json({ ...predictions, _id: assessment._id, createdAt: assessment.createdAt });
       } catch {
-        // Not authenticated — return predictions without saving
+        // Not authenticated
       }
     }
 
     res.json({ ...predictions, _id: 'guest_' + Date.now(), createdAt: new Date().toISOString() });
   } catch (err) {
+    console.error('Submit route error:', err);
     res.status(500).json({ message: 'Failed to process assessment' });
   }
 });

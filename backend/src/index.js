@@ -28,7 +28,10 @@ app.get('/health', (req, res) => res.json({ status: 'ok', service: 'NeuraCare AP
 
 // ── MongoDB + Start ────────────────────────────────────────────────────────
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(process.env.MONGODB_URI, {
+    tlsAllowInvalidCertificates: true,
+    serverSelectionTimeoutMS: 5000,
+  })
   .then(() => {
     console.log('✅ MongoDB connected');
     app.listen(PORT, () => console.log(`🚀 NeuraCare API running on port ${PORT}`));

@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Any
 from app.services.ml_service import ml_service
 from app.services.sleep_service import calculate_sleep_score
 from app.services.emotion_service import emotion_service
+from app.services.llm_recommendations import generate_ai_recommendations
 from app.database import collection
 
 router = APIRouter()
@@ -17,8 +18,8 @@ class TextAnalysisRequest(BaseModel):
 def predict(payload: Dict[str, Any]):
     """
     Unified assessment prediction endpoint.
-    Executes XGBoost ML predictions + SHAP explanations, ISI sleep scoring, and GoEmotions text analysis.
-    Stores the assessment document into MongoDB Atlas.
+    Executes XGBoost ML predictions + SHAP explanations, ISI sleep scoring, GoEmotions text analysis,
+    and OpenRouter LLM AI Wellness Recommendations.
     """
     input_dict = {}
     raw_answers = payload.get("answers", payload)
@@ -44,7 +45,18 @@ def predict(payload: Dict[str, Any]):
         "message": "No optional journal text provided"
     }
 
-    # 4. Construct MongoDB record
+    # 4. Generate OpenRouter AI Personal Recommendations
+    top_emotion_labels = [e["label"] for e in emotion_result.get("emotions", [])] if isinstance(emotion_result.get("emotions"), list) else []
+    recommendations = generate_ai_recommendations(
+        depression_level=ml_results["depression"]["level"],
+        anxiety_level=ml_results["anxiety"]["level"],
+        stress_level=ml_results["stress"]["level"],
+        sleep_category=sleep_result.get("category", ""),
+        text_emotions=top_emotion_labels,
+        user_text=text_input
+    )
+
+    # 5. Construct MongoDB record
     timestamp_str = datetime.now(timezone.utc).isoformat()
     record = {
         "user_id": payload.get("user_id", "demo_user"),
@@ -58,14 +70,16 @@ def predict(payload: Dict[str, Any]):
             "anxiety": ml_results["anxiety"],
             "stress": ml_results["stress"],
             "sleep": sleep_result,
-            "emotion": emotion_result
+            "emotion": emotion_result,
+            "recommendations": recommendations
         }
     }
 
     record_id = None
     try:
-        doc = collection.insert_one(record)
-        record_id = str(doc.inserted_id)
+        if collection is not None:
+            doc = collection.insert_one(record)
+            record_id = str(doc.inserted_id)
     except Exception as e:
         print(f"MongoDB storage warning: {e}")
 
@@ -75,7 +89,8 @@ def predict(payload: Dict[str, Any]):
         "anxiety": ml_results["anxiety"],
         "stress": ml_results["stress"],
         "sleep": sleep_result,
-        "emotion": emotion_result
+        "emotion": emotion_result,
+        "recommendations": recommendations
     }
 
 @router.post("/analyze-text")

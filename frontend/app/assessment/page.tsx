@@ -2,26 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, ChevronLeft, ChevronRight, Send, PhoneCall } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight, Send, MessageSquare, Moon, Brain, Shield } from 'lucide-react';
 import StepProgress from '@/components/StepProgress';
 import Disclaimer from '@/components/Disclaimer';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 
-// ─── PHQ-9 Questions ───────────────────────────────────────────────────────
+// ─── DASS-42 / PHQ-9 Questions ──────────────────────────────────────────────
 const PHQ9 = [
   { id: 'phq_interest', text: 'Little interest or pleasure in doing things' },
   { id: 'phq_depressed', text: 'Feeling down, depressed, or hopeless' },
   { id: 'phq_sleep', text: 'Trouble falling or staying asleep, or sleeping too much' },
   { id: 'phq_tired', text: 'Feeling tired or having little energy' },
   { id: 'phq_appetite', text: 'Poor appetite or overeating' },
-  { id: 'phq_failure', text: 'Feeling bad about yourself — or that you are a failure or have let yourself or your family down' },
-  { id: 'phq_concentrate', text: 'Trouble concentrating on things, such as reading the newspaper or watching television' },
-  { id: 'phq_slow_restless', text: 'Moving or speaking so slowly that other people could have noticed, or the opposite — being so fidgety or restless' },
-  { id: 'phq_self_harm', text: 'Thoughts that you would be better off dead, or of hurting yourself in some way' },
+  { id: 'phq_failure', text: 'Feeling bad about yourself — or that you are a failure or have let yourself down' },
+  { id: 'phq_concentrate', text: 'Trouble concentrating on things, such as reading or watching television' },
+  { id: 'phq_slow_restless', text: 'Moving or speaking so slowly or being fidgety/restless' },
+  { id: 'phq_self_harm', text: 'Thoughts that you would be better off dead, or of hurting yourself' },
 ];
 
-// ─── GAD-7 Questions ───────────────────────────────────────────────────────
 const GAD7 = [
   { id: 'gad_nervous', text: 'Feeling nervous, anxious, or on edge' },
   { id: 'gad_cant_stop', text: 'Not being able to stop or control worrying' },
@@ -32,32 +31,42 @@ const GAD7 = [
   { id: 'gad_afraid', text: 'Feeling afraid as if something awful might happen' },
 ];
 
-const SCALE = ['Not at all', 'Several days', 'More than half the days', 'Nearly every day'];
-
-const STEPS = [
-  { label: 'Depression', sublabel: 'PHQ-9' },
-  { label: 'Anxiety', sublabel: 'GAD-7' },
-  { label: 'Stress & Lifestyle', sublabel: 'Habits' },
-  { label: 'Background', sublabel: 'About You' },
+const ISI_QUESTIONS = [
+  { id: 'isi_1', text: 'Difficulty falling asleep' },
+  { id: 'isi_2', text: 'Difficulty staying asleep' },
+  { id: 'isi_3', text: 'Problems waking up too early' },
+  { id: 'isi_4', text: 'How satisfied/dissatisfied are you with your current sleep pattern?' },
+  { id: 'isi_5', text: 'How noticeable to others do you think your sleep problem is?' },
+  { id: 'isi_6', text: 'How worried/distressed are you about your current sleep problem?' },
+  { id: 'isi_7', text: 'To what extent do you consider your sleep problem to interfere with your daily functioning?' },
 ];
 
-// ─── Radio Question Row ────────────────────────────────────────────────────
+const SCALE_4 = ['Not at all', 'Several days', 'More than half the days', 'Nearly every day'];
+const ISI_SCALE = ['None / Very Satisfied', 'Mild / Satisfied', 'Moderate / Neutral', 'Severe / Dissatisfied', 'Very Severe / Very Dissatisfied'];
+
+const STEPS = [
+  { label: 'Screening', sublabel: 'PHQ & GAD' },
+  { label: 'Sleep Assessment', sublabel: 'ISI Index' },
+  { label: 'Demographics', sublabel: 'About You' },
+  { label: 'Optional Journal', sublabel: 'GoEmotions NLP' },
+];
+
 function RadioRow({
-  question, fieldId, value, onChange, hasError,
+  question, fieldId, value, onChange, hasError, scale = SCALE_4
 }: {
-  question: string; fieldId: string; value: number | null; onChange: (v: number) => void; hasError: boolean;
+  question: string; fieldId: string; value: number | null; onChange: (v: number) => void; hasError: boolean; scale?: string[];
 }) {
   return (
-    <div className={`p-4 rounded-2xl border transition-all duration-200 ${hasError ? 'border-danger bg-danger-light/30' : 'border-border bg-white hover:border-primary/30'}`}>
+    <div className={`p-4 rounded-2xl border transition-all duration-200 ${hasError ? 'border-red-300 bg-red-50/40' : 'border-border bg-white hover:border-primary/30'}`}>
       <p className="text-sm font-medium text-text-main mb-4 leading-relaxed">
-        {hasError && <span className="text-danger mr-1">*</span>}
+        {hasError && <span className="text-red-500 mr-1">*</span>}
         {question}
       </p>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {SCALE.map((label, i) => (
+      <div className={`grid gap-2 ${scale.length === 5 ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'}`}>
+        {scale.map((label, i) => (
           <label
             key={i}
-            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl cursor-pointer border-2 transition-all duration-150 min-h-[72px] justify-center ${
+            className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl cursor-pointer border-2 transition-all duration-150 min-h-[64px] justify-center ${
               value === i
                 ? 'border-primary bg-primary-light text-primary'
                 : 'border-border hover:border-primary/40 text-text-muted'
@@ -71,8 +80,8 @@ function RadioRow({
               onChange={() => onChange(i)}
               className="sr-only"
             />
-            <span className="text-lg font-bold">{i}</span>
-            <span className="text-xs text-center leading-tight">{label}</span>
+            <span className="text-base font-bold">{i}</span>
+            <span className="text-[11px] text-center leading-tight">{label}</span>
           </label>
         ))}
       </div>
@@ -80,7 +89,6 @@ function RadioRow({
   );
 }
 
-// ─── Select Row ────────────────────────────────────────────────────────────
 function SelectRow({
   label, fieldId, value, options, onChange, hasError,
 }: {
@@ -89,14 +97,14 @@ function SelectRow({
   return (
     <div>
       <label htmlFor={fieldId} className="block text-sm font-medium text-text-main mb-1.5">
-        {hasError && <span className="text-danger mr-1">*</span>}
+        {hasError && <span className="text-red-500 mr-1">*</span>}
         {label}
       </label>
       <select
         id={fieldId}
         value={value}
         onChange={e => onChange(e.target.value)}
-        className={`w-full px-4 py-3 rounded-xl border text-sm transition-all duration-200 outline-none bg-white focus:border-primary focus:ring-2 focus:ring-primary/10 appearance-none cursor-pointer min-h-[48px] ${hasError ? 'border-danger' : 'border-border'}`}
+        className={`w-full px-4 py-3 rounded-xl border text-sm transition-all duration-200 outline-none bg-white focus:border-primary focus:ring-2 focus:ring-primary/10 appearance-none cursor-pointer min-h-[48px] ${hasError ? 'border-red-300' : 'border-border'}`}
       >
         <option value="">Select an option</option>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
@@ -112,24 +120,16 @@ export default function AssessmentPage() {
   const [step, setStep] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showCrisis, setShowCrisis] = useState(false);
 
-  // PHQ-9 answers
   const [phqAnswers, setPhqAnswers] = useState<Record<string, number | null>>({});
-  // GAD-7 answers
   const [gadAnswers, setGadAnswers] = useState<Record<string, number | null>>({});
-  // Step 3
-  const [lifestyle, setLifestyle] = useState<Record<string, string>>({
-    sleep_hours: '', sleep_quality: '', exercise_frequency: '', screen_time: '',
-    stress_frequency: '', work_pressure: '', deadline_anxiety: '', alcohol: '', smoking: '',
-  });
-  // Step 4
-  const [background, setBackground] = useState<Record<string, string>>({
-    age_group: '', gender: '', education: '', occupation: '', diagnosed: '',
-    consulted_prof: '', on_medication: '', overall_mental: '', needs_support: '',
+  const [isiAnswers, setIsiAnswers] = useState<Record<string, number | null>>({});
+  const [journalText, setJournalText] = useState('');
+  const [demographics, setDemographics] = useState<Record<string, string>>({
+    age: '18-24', gender: 'Prefer not to say', education: 'Undergraduate',
+    urban: 'Urban', married: 'Single', familysize: '3',
   });
 
-  // Load from sessionStorage
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
@@ -137,43 +137,30 @@ export default function AssessmentPage() {
         const parsed = JSON.parse(saved);
         if (parsed.phqAnswers) setPhqAnswers(parsed.phqAnswers);
         if (parsed.gadAnswers) setGadAnswers(parsed.gadAnswers);
-        if (parsed.lifestyle) setLifestyle(parsed.lifestyle);
-        if (parsed.background) setBackground(parsed.background);
+        if (parsed.isiAnswers) setIsiAnswers(parsed.isiAnswers);
+        if (parsed.demographics) setDemographics(parsed.demographics);
+        if (parsed.journalText) setJournalText(parsed.journalText);
       }
     } catch { /* ignore */ }
   }, []);
 
-  // Save to sessionStorage on change
   useEffect(() => {
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ phqAnswers, gadAnswers, lifestyle, background }));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ phqAnswers, gadAnswers, isiAnswers, demographics, journalText }));
     } catch { /* ignore */ }
-  }, [phqAnswers, gadAnswers, lifestyle, background]);
-
-  // PHQ-9 score
-  const phqScore = PHQ9.reduce((acc, q) => acc + (phqAnswers[q.id] ?? 0), 0);
-  const gadScore = GAD7.reduce((acc, q) => acc + (gadAnswers[q.id] ?? 0), 0);
-
-  // Crisis check
-  const handlePhqChange = (id: string, val: number) => {
-    setPhqAnswers(prev => ({ ...prev, [id]: val }));
-    if (id === 'phq_self_harm' && val >= 2) setShowCrisis(true);
-    else if (id === 'phq_self_harm') setShowCrisis(false);
-  };
+  }, [phqAnswers, gadAnswers, isiAnswers, demographics, journalText]);
 
   const validateStep = () => {
     if (step === 0) {
-      const unanswered = PHQ9.some(q => phqAnswers[q.id] == null);
-      if (unanswered) { setErrorMsg('Please answer all questions to continue.'); return false; }
+      const phqUn = PHQ9.some(q => phqAnswers[q.id] == null);
+      const gadUn = GAD7.some(q => gadAnswers[q.id] == null);
+      if (phqUn || gadUn) { setErrorMsg('Please answer all PHQ-9 & GAD-7 questions.'); return false; }
     } else if (step === 1) {
-      const unanswered = GAD7.some(q => gadAnswers[q.id] == null);
-      if (unanswered) { setErrorMsg('Please answer all questions to continue.'); return false; }
+      const isiUn = ISI_QUESTIONS.some(q => isiAnswers[q.id] == null);
+      if (isiUn) { setErrorMsg('Please answer all Sleep ISI questions.'); return false; }
     } else if (step === 2) {
-      const unanswered = Object.values(lifestyle).some(v => !v);
-      if (unanswered) { setErrorMsg('Please answer all questions to continue.'); return false; }
-    } else if (step === 3) {
-      const unanswered = Object.values(background).some(v => !v);
-      if (unanswered) { setErrorMsg('Please answer all questions to continue.'); return false; }
+      const demoUn = Object.values(demographics).some(v => !v);
+      if (demoUn) { setErrorMsg('Please select all demographic fields.'); return false; }
     }
     setErrorMsg('');
     return true;
@@ -195,34 +182,26 @@ export default function AssessmentPage() {
     if (!validateStep()) return;
     setLoading(true);
 
+    const sleep_answers = ISI_QUESTIONS.map(q => isiAnswers[q.id] ?? 0);
+
     const formData = {
       ...phqAnswers,
       ...gadAnswers,
-      ...lifestyle,
-      ...background,
+      ...demographics,
+      sleep_answers,
+      text: journalText.trim(),
     };
 
     try {
       const result = await api.submitAssessment(formData);
       sessionStorage.removeItem(STORAGE_KEY);
-      router.push('/results');
       sessionStorage.setItem('neuracare_result', JSON.stringify(result));
-    } catch {
-      // Try to use mock data for demo if backend is not running
-      const mockResult = generateMockResult();
-      sessionStorage.removeItem(STORAGE_KEY);
-      sessionStorage.setItem('neuracare_result', JSON.stringify(mockResult));
       router.push('/results');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to analyze assessment. Check backend.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const scoreColor = (score: number, max: number) => {
-    const pct = (score / max) * 100;
-    if (pct < 33) return 'text-success';
-    if (pct < 60) return 'text-warning';
-    return 'text-danger';
   };
 
   return (
@@ -231,57 +210,30 @@ export default function AssessmentPage() {
         <StepProgress steps={STEPS} currentStep={step} />
         <Disclaimer className="mb-6" />
 
-        {/* Crisis alert */}
-        {showCrisis && (
-          <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
-            <div className="flex gap-3">
-              <PhoneCall className="h-5 w-5 text-danger flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-danger text-sm mb-1">You are not alone</p>
-                <p className="text-sm text-red-700">
-                  If you are having thoughts of hurting yourself, please reach out immediately.
-                  Call <strong>iCall: 9152987821</strong> (India) — free, confidential counselling.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Step 0: PHQ-9 ── */}
+        {/* ── Step 0: PHQ-9 & GAD-7 ── */}
         {step === 0 && (
-          <div className="animate-fade-in">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-text-main mb-1">Depression Assessment</h1>
-              <p className="text-text-muted text-sm">PHQ-9 · Over the <strong>last 2 weeks</strong>, how often have you been bothered by the following?</p>
+          <div className="animate-fade-in space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold text-text-main mb-1">Mental Health Risk Screening</h1>
+              <p className="text-text-muted text-sm">Over the <strong>last 2 weeks</strong>, how often have you been bothered by the following?</p>
             </div>
+
             <div className="space-y-4">
+              <h3 className="font-bold text-primary text-base">Depression Subscale (PHQ-9)</h3>
               {PHQ9.map(q => (
                 <RadioRow
                   key={q.id}
                   question={q.text}
                   fieldId={q.id}
                   value={phqAnswers[q.id] ?? null}
-                  onChange={val => handlePhqChange(q.id, val)}
+                  onChange={val => setPhqAnswers(prev => ({ ...prev, [q.id]: val }))}
                   hasError={!!errorMsg && phqAnswers[q.id] == null}
                 />
               ))}
             </div>
-            {/* Running score */}
-            <div className={`mt-6 p-4 bg-white rounded-2xl border border-border text-center`}>
-              <span className="text-sm text-text-muted">PHQ-9 Score: </span>
-              <span className={`text-xl font-bold ${scoreColor(phqScore, 27)}`}>{phqScore} / 27</span>
-            </div>
-          </div>
-        )}
 
-        {/* ── Step 1: GAD-7 ── */}
-        {step === 1 && (
-          <div className="animate-fade-in">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-text-main mb-1">Anxiety Assessment</h1>
-              <p className="text-text-muted text-sm">GAD-7 · Over the <strong>last 2 weeks</strong>, how often have you been bothered by the following?</p>
-            </div>
-            <div className="space-y-4">
+            <div className="space-y-4 pt-4">
+              <h3 className="font-bold text-secondary text-base">Anxiety Subscale (GAD-7)</h3>
               {GAD7.map(q => (
                 <RadioRow
                   key={q.id}
@@ -293,58 +245,82 @@ export default function AssessmentPage() {
                 />
               ))}
             </div>
-            <div className="mt-6 p-4 bg-white rounded-2xl border border-border text-center">
-              <span className="text-sm text-text-muted">GAD-7 Score: </span>
-              <span className={`text-xl font-bold ${scoreColor(gadScore, 21)}`}>{gadScore} / 21</span>
+          </div>
+        )}
+
+        {/* ── Step 1: Sleep ISI Index ── */}
+        {step === 1 && (
+          <div className="animate-fade-in space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold text-text-main mb-1">Insomnia Severity Index (ISI)</h1>
+              <p className="text-text-muted text-sm">Evaluate your sleep quality, disturbances, and daily impact.</p>
+            </div>
+            <div className="space-y-4">
+              {ISI_QUESTIONS.map(q => (
+                <RadioRow
+                  key={q.id}
+                  question={q.text}
+                  fieldId={q.id}
+                  scale={ISI_SCALE}
+                  value={isiAnswers[q.id] ?? null}
+                  onChange={val => setIsiAnswers(prev => ({ ...prev, [q.id]: val }))}
+                  hasError={!!errorMsg && isiAnswers[q.id] == null}
+                />
+              ))}
             </div>
           </div>
         )}
 
-        {/* ── Step 2: Lifestyle ── */}
+        {/* ── Step 2: Demographics ── */}
         {step === 2 && (
-          <div className="animate-fade-in">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-text-main mb-1">Stress & Lifestyle Factors</h1>
-              <p className="text-text-muted text-sm">Tell us about your daily habits and stress levels.</p>
+          <div className="animate-fade-in space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold text-text-main mb-1">Demographics & Background</h1>
+              <p className="text-text-muted text-sm">Required demographic indicators evaluated by the XGBoost ML model.</p>
             </div>
             <div className="bg-white rounded-2xl border border-border p-6 space-y-5">
-              <SelectRow label="How many hours do you sleep on average per night?" fieldId="sleep_hours" value={lifestyle.sleep_hours} options={['Less than 5 hours', '5-6 hours', '6-7 hours', '7-8 hours', 'More than 8 hours']} onChange={v => setLifestyle(p => ({ ...p, sleep_hours: v }))} hasError={!!errorMsg && !lifestyle.sleep_hours} />
-              <SelectRow label="How would you rate your sleep quality?" fieldId="sleep_quality" value={lifestyle.sleep_quality} options={['Very Poor', 'Poor', 'Average', 'Good', 'Very Good']} onChange={v => setLifestyle(p => ({ ...p, sleep_quality: v }))} hasError={!!errorMsg && !lifestyle.sleep_quality} />
-              <SelectRow label="How often do you exercise per week?" fieldId="exercise_frequency" value={lifestyle.exercise_frequency} options={['Never', '1-2 days', '3-4 days', '5 or more days']} onChange={v => setLifestyle(p => ({ ...p, exercise_frequency: v }))} hasError={!!errorMsg && !lifestyle.exercise_frequency} />
-              <SelectRow label="How much screen time do you have daily (excluding work)?" fieldId="screen_time" value={lifestyle.screen_time} options={['Less than 2 hours', '2-4 hours', '4-6 hours', 'More than 6 hours']} onChange={v => setLifestyle(p => ({ ...p, screen_time: v }))} hasError={!!errorMsg && !lifestyle.screen_time} />
-              <SelectRow label="How often do you feel stressed in daily life?" fieldId="stress_frequency" value={lifestyle.stress_frequency} options={['Never', 'Rarely', 'Sometimes', 'Often', 'Always']} onChange={v => setLifestyle(p => ({ ...p, stress_frequency: v }))} hasError={!!errorMsg && !lifestyle.stress_frequency} />
-              <SelectRow label="How would you rate your work/academic pressure?" fieldId="work_pressure" value={lifestyle.work_pressure} options={['Very Low', 'Low', 'Moderate', 'High', 'Very High']} onChange={v => setLifestyle(p => ({ ...p, work_pressure: v }))} hasError={!!errorMsg && !lifestyle.work_pressure} />
-              <SelectRow label="Do deadlines or workload make you feel anxious?" fieldId="deadline_anxiety" value={lifestyle.deadline_anxiety} options={['Never', 'Sometimes', 'Often', 'Always']} onChange={v => setLifestyle(p => ({ ...p, deadline_anxiety: v }))} hasError={!!errorMsg && !lifestyle.deadline_anxiety} />
-              <SelectRow label="How often do you consume alcohol?" fieldId="alcohol" value={lifestyle.alcohol} options={['Never', 'Occasionally', 'Frequently']} onChange={v => setLifestyle(p => ({ ...p, alcohol: v }))} hasError={!!errorMsg && !lifestyle.alcohol} />
-              <SelectRow label="How often do you smoke or use tobacco?" fieldId="smoking" value={lifestyle.smoking} options={['Never', 'Occasionally', 'Frequently']} onChange={v => setLifestyle(p => ({ ...p, smoking: v }))} hasError={!!errorMsg && !lifestyle.smoking} />
+              <SelectRow label="Age Group" fieldId="age" value={demographics.age} options={['Below 18', '18-24', '25-34', '35-44', '45-54', '55+']} onChange={v => setDemographics(p => ({ ...p, age: v }))} hasError={!!errorMsg && !demographics.age} />
+              <SelectRow label="Gender" fieldId="gender" value={demographics.gender} options={['Male', 'Female', 'Other', 'Prefer not to say']} onChange={v => setDemographics(p => ({ ...p, gender: v }))} hasError={!!errorMsg && !demographics.gender} />
+              <SelectRow label="Highest Level of Education" fieldId="education" value={demographics.education} options={['School', 'Undergraduate', 'Postgraduate', 'Doctorate', 'Other']} onChange={v => setDemographics(p => ({ ...p, education: v }))} hasError={!!errorMsg && !demographics.education} />
+              <SelectRow label="Living Area" fieldId="urban" value={demographics.urban} options={['Urban', 'Rural', 'Suburban']} onChange={v => setDemographics(p => ({ ...p, urban: v }))} hasError={!!errorMsg && !demographics.urban} />
+              <SelectRow label="Marital Status" fieldId="married" value={demographics.married} options={['Single', 'Married', 'Divorced', 'Widowed']} onChange={v => setDemographics(p => ({ ...p, married: v }))} hasError={!!errorMsg && !demographics.married} />
+              <SelectRow label="Family Size" fieldId="familysize" value={demographics.familysize} options={['1', '2', '3', '4', '5+']} onChange={v => setDemographics(p => ({ ...p, familysize: v }))} hasError={!!errorMsg && !demographics.familysize} />
             </div>
           </div>
         )}
 
-        {/* ── Step 3: Background ── */}
+        {/* ── Step 3: GoEmotions Optional Text ── */}
         {step === 3 && (
-          <div className="animate-fade-in">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-text-main mb-1">About You</h1>
-              <p className="text-text-muted text-sm">This helps us give better personalized results. All information is anonymous.</p>
+          <div className="animate-fade-in space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold text-text-main mb-1">Optional Journal Entry (GoEmotions NLP)</h1>
+              <p className="text-text-muted text-sm">
+                Describe how you feel today in your own words. Our Hugging Face GoEmotions DistilBERT NLP model will analyze emotional indicators in real time.
+              </p>
             </div>
-            <div className="bg-white rounded-2xl border border-border p-6 space-y-5">
-              <SelectRow label="Age Group" fieldId="age_group" value={background.age_group} options={['Below 18', '18-24', '25-34', '35-44', '45-54', '55+']} onChange={v => setBackground(p => ({ ...p, age_group: v }))} hasError={!!errorMsg && !background.age_group} />
-              <SelectRow label="Gender" fieldId="gender" value={background.gender} options={['Male', 'Female', 'Other', 'Prefer not to say']} onChange={v => setBackground(p => ({ ...p, gender: v }))} hasError={!!errorMsg && !background.gender} />
-              <SelectRow label="Highest Level of Education" fieldId="education" value={background.education} options={['School', 'Undergraduate', 'Postgraduate', 'Doctorate', 'Other']} onChange={v => setBackground(p => ({ ...p, education: v }))} hasError={!!errorMsg && !background.education} />
-              <SelectRow label="Current Occupation" fieldId="occupation" value={background.occupation} options={['Student', 'Employed (Full-Time)', 'Employed (Part-Time)', 'Self-Employed', 'Unemployed', 'Homemaker']} onChange={v => setBackground(p => ({ ...p, occupation: v }))} hasError={!!errorMsg && !background.occupation} />
-              <SelectRow label="Have you ever been diagnosed with a mental health condition?" fieldId="diagnosed" value={background.diagnosed} options={['No', 'Yes', 'Prefer not to say']} onChange={v => setBackground(p => ({ ...p, diagnosed: v }))} hasError={!!errorMsg && !background.diagnosed} />
-              <SelectRow label="Have you consulted a mental health professional before?" fieldId="consulted_prof" value={background.consulted_prof} options={['No', 'Yes']} onChange={v => setBackground(p => ({ ...p, consulted_prof: v }))} hasError={!!errorMsg && !background.consulted_prof} />
-              <SelectRow label="Are you currently taking mental health medication?" fieldId="on_medication" value={background.on_medication} options={['No', 'Yes', 'Prefer not to say']} onChange={v => setBackground(p => ({ ...p, on_medication: v }))} hasError={!!errorMsg && !background.on_medication} />
-              <SelectRow label="How would you rate your current mental health overall?" fieldId="overall_mental" value={background.overall_mental} options={['Excellent', 'Good', 'Fair', 'Poor', 'Very Poor']} onChange={v => setBackground(p => ({ ...p, overall_mental: v }))} hasError={!!errorMsg && !background.overall_mental} />
-              <SelectRow label="Do you feel you need professional mental health support?" fieldId="needs_support" value={background.needs_support} options={['No', 'Unsure', 'Yes']} onChange={v => setBackground(p => ({ ...p, needs_support: v }))} hasError={!!errorMsg && !background.needs_support} />
+            <div className="bg-white rounded-2xl border border-border p-6 space-y-4">
+              <label className="block text-sm font-semibold text-text-main">
+                How have you been feeling mentally or emotionally recently? (Optional)
+              </label>
+              <textarea
+                value={journalText}
+                onChange={e => setJournalText(e.target.value.slice(0, 1000))}
+                rows={5}
+                placeholder="Example: I have been feeling quite anxious about my upcoming exams and finding it difficult to stay focused or rest peacefully..."
+                className="w-full p-4 rounded-xl border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none"
+              />
+              <div className="flex justify-between items-center text-xs text-text-muted">
+                <span>GoEmotions DistilBERT analysis will detect emotional tone</span>
+                <span className={journalText.length >= 950 ? 'text-red-500 font-bold' : ''}>
+                  {journalText.length} / 1000 characters
+                </span>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Error message */}
         {errorMsg && (
-          <div className="mt-4 flex items-center gap-2 text-danger text-sm bg-danger-light p-3 rounded-xl">
+          <div className="mt-4 flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-xl border border-red-200">
             <AlertTriangle className="h-4 w-4 flex-shrink-0" />
             {errorMsg}
           </div>
@@ -376,10 +352,10 @@ export default function AssessmentPage() {
               {loading ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Analysing your responses...
+                  Running AI & NLP Analysis...
                 </>
               ) : (
-                <><Send className="h-4 w-4" /> Get My Results</>
+                <><Send className="h-4 w-4" /> Complete & Get AI Results</>
               )}
             </button>
           )}
@@ -387,60 +363,4 @@ export default function AssessmentPage() {
       </div>
     </div>
   );
-}
-
-// ─── Mock result for demo when backend is offline ─────────────────────────
-function generateMockResult() {
-  return {
-    _id: 'mock_' + Date.now(),
-    createdAt: new Date().toISOString(),
-    overallScore: 62,
-    depression: { label: 'Moderate', score: 58, probabilities: { low: 0.15, moderate: 0.60, high: 0.25 } },
-    anxiety: { label: 'Moderate', score: 64, probabilities: { low: 0.10, moderate: 0.55, high: 0.35 } },
-    stress: { label: 'High', score: 72, probabilities: { low: 0.05, moderate: 0.30, high: 0.65 } },
-    insomnia: { label: 'Low', score: 28, probabilities: { low: 0.70, moderate: 0.25, high: 0.05 } },
-    shapValues: {
-      depression: [
-        { feature: 'phq_depressed', value: 0.42 },
-        { feature: 'phq_tired', value: 0.31 },
-        { feature: 'sleep_quality', value: -0.28 },
-        { feature: 'phq_interest', value: 0.25 },
-        { feature: 'exercise_frequency', value: -0.19 },
-        { feature: 'phq_concentrate', value: 0.17 },
-        { feature: 'work_pressure', value: 0.14 },
-        { feature: 'phq_failure', value: 0.12 },
-      ],
-      anxiety: [
-        { feature: 'gad_nervous', value: 0.38 },
-        { feature: 'work_pressure', value: 0.29 },
-        { feature: 'gad_cant_stop', value: 0.24 },
-        { feature: 'sleep_quality', value: -0.22 },
-        { feature: 'gad_afraid', value: 0.18 },
-        { feature: 'exercise_frequency', value: -0.15 },
-        { feature: 'screen_time', value: 0.13 },
-        { feature: 'gad_irritable', value: 0.11 },
-      ],
-      stress: [
-        { feature: 'work_pressure', value: 0.51 },
-        { feature: 'stress_frequency', value: 0.44 },
-        { feature: 'deadline_anxiety', value: 0.33 },
-        { feature: 'sleep_hours', value: -0.25 },
-        { feature: 'exercise_frequency', value: -0.21 },
-        { feature: 'screen_time', value: 0.18 },
-        { feature: 'alcohol', value: 0.12 },
-        { feature: 'sleep_quality', value: -0.11 },
-      ],
-      insomnia: [
-        { feature: 'sleep_quality', value: 0.39 },
-        { feature: 'sleep_hours', value: 0.31 },
-        { feature: 'screen_time', value: 0.22 },
-        { feature: 'exercise_frequency', value: -0.19 },
-        { feature: 'stress_frequency', value: 0.16 },
-        { feature: 'alcohol', value: 0.11 },
-        { feature: 'phq_sleep', value: 0.10 },
-        { feature: 'gad_nervous', value: 0.08 },
-      ],
-    },
-    recommendations: [],
-  };
 }

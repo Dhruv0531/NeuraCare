@@ -16,7 +16,6 @@ export default function Disclaimer({ variant = 'info', className = '' }: Disclai
             <p className="text-orange-700 text-sm mt-1 leading-relaxed">
               This assessment is a <strong>screening tool only</strong>. It is NOT a medical diagnosis.
               Please consult a qualified mental health professional for clinical evaluation and treatment.
-              If you are in crisis, call <strong>iCall: 9152987821</strong>.
             </p>
           </div>
         </div>

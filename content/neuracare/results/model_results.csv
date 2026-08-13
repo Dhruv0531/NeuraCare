@@ -1,0 +1,4 @@
+condition,samples,accuracy,f1_weighted,auc_roc,cv_f1
+depression,38840,0.9617,0.9618,0.9978,0.9457
+anxiety,38840,0.941,0.9412,0.9951,0.9201
+stress,38840,0.9502,0.9505,0.9963,0.9261
