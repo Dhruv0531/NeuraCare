@@ -1,70 +1,128 @@
-# Getting Started with Create React App
+﻿# NeuraCare
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+NeuraCare is a mental health assessment platform that allows users to complete wellness evaluations, view risk insights, and review past results. The project contains a Node/Express backend, a Next.js frontend, and a legacy React app in the root folder.
 
-## Available Scripts
+## Project structure
 
-In the project directory, you can run:
+- backend/ - Express API and MongoDB integration
+- frontend/ - Next.js application used for the main UI
+- src/ - older React project kept for reference or legacy use
+- public/ - static web assets
 
-### `npm start`
+## Tech stack
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- Frontend: Next.js, React, Tailwind CSS
+- Backend: Node.js, Express, MongoDB
+- Optional ML API: Python + FastAPI
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Prerequisites
 
-### `npm test`
+Before running the project, make sure you have:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js 18+
+- npm
+- Python 3.10+ (for the optional ML API)
+- MongoDB running locally or a valid MongoDB connection string
 
-### `npm run build`
+## 1) Install backend dependencies
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+cd backend
+npm install
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Create a `.env` file inside the backend folder:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```env
+PORT=5000
+JWT_SECRET=your_secret_key
+MONGODB_URI=mongodb://localhost:27017/neuracare
+ML_API_URL=http://localhost:8000
+```
 
-### `npm run eject`
+Then start the API:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```bash
+cd backend
+npm run dev
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+The backend runs on:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- http://localhost:5000
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## 2) Install frontend dependencies
 
-## Learn More
+```bash
+cd frontend
+npm install
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Start the frontend:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+cd frontend
+npm run dev
+```
 
-### Code Splitting
+The app runs on:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+- http://localhost:3000
 
-### Analyzing the Bundle Size
+## 3) Optional Python ML service
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+There is also a Python FastAPI app under the legacy folder structure. To run it:
 
-### Making a Progressive Web App
+```bash
+cd src/backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+This service is used by the backend for prediction requests when configured via `ML_API_URL`.
 
-### Advanced Configuration
+## Common workflow
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+1. Start MongoDB
+2. Start backend API
+3. Start frontend app
+4. Open http://localhost:3000 in the browser
 
-### Deployment
+## Notes
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- The backend falls back to mock prediction data if the ML service is unavailable.
+- If MongoDB is not available, the app may still boot in a degraded mode but saved assessments will not persist.
+- The root React project is older and not the main app currently used for development.
 
-### `npm run build` fails to minify
+## Useful scripts
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Backend:
+
+```bash
+cd backend
+npm run dev
+npm start
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run dev
+npm run build
+```
+
+## Production build
+
+Frontend production build:
+
+```bash
+cd frontend
+npm run build
+```
+
+## License
+
+This project is for educational and internal project use unless a separate license is added later.

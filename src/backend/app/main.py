@@ -1,12 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import predict, history
-# from neuracare.src.backend.app.routes import predict
+from app.routes import predict, history, health
 
-app = FastAPI()
+app = FastAPI(title="NeuraCare AI Platform API")
 
-# Allow frontend
+# Enable CORS for frontend requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,9 +14,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(health.router)
 app.include_router(predict.router)
 app.include_router(history.router)
 
 @app.get("/")
 def root():
-    return {"message": "NeuraCare API running"}
+    return {
+        "platform": "NeuraCare AI Mental Health Assessment API",
+        "status": "online",
+        "documentation": "/docs"
+    }

@@ -1,114 +1,42 @@
-# =========================
-# NODE MODULES (all levels)
-# =========================
-node_modules/
-**/node_modules/
-
-# =========================
-# NEXT.JS (frontend)
-# =========================
-frontend/.next/
-frontend/out/
-frontend/build/
-frontend/.vercel/
-frontend/coverage/
-*.tsbuildinfo
-next-env.d.ts
-
-# =========================
-# NODE / NPM
-# =========================
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnp
-.pnp.js
-package-lock.json
-yarn.lock
-
-# =========================
-# ENVIRONMENT / SECRETS
-# =========================
+# Environment files (Secrets & API Keys)
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
-frontend/.env.local
-backend/.env
+.env.development
+.env.production
+*.env
 
-# =========================
-# PYTHON / FASTAPI (ML API)
-# =========================
-__pycache__/
-**/__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.pdb
-*.egg-info/
+# Dependency directories
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Next.js Build Output
+.next/
+frontend/.next/
+out/
+build/
 dist/
-*.egg
-.Python
+
+# Python Cache & Virtual Environments
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*/*/*/__pycache__/
+*.py[cod]
+*$py.class
 venv/
 .venv/
 env/
 ENV/
-*.db
-*.sqlite3
-instance/
-.webassets-cache
-migrations/
+.pytest_cache/
 
-# =========================
-# BUILD OUTPUTS
-# =========================
-/build
-/dist
-/coverage
-
-# =========================
-# SYSTEM FILES
-# =========================
+# System & OS Files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-desktop.ini
+*.log
 
-# =========================
-# IDE / EDITOR
-# =========================
+# IDE settings
 .vscode/
 .idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# =========================
-# LOGS
-# =========================
-*.log
-logs/
-*.pid
-*.seed
-*.pid.lock
-
-# =========================
-# TESTING
-# =========================
-coverage/
-.nyc_output
-
-# =========================
-# MISC
-# =========================
-.cache/
-.parcel-cache/
-.eslintcache
-*.map
+*.swp
+*.swo
