@@ -84,7 +84,7 @@ try:
         "text": "I feel anxious and tired lately"
     }).encode()
     req = urllib.request.Request(f"{FASTAPI_URL}/predict", data=payload, headers={"Content-Type": "application/json"})
-    res = json.loads(urllib.request.urlopen(req, timeout=5).read().decode())
+    res = json.loads(urllib.request.urlopen(req, timeout=10).read().decode())
     
     dep_shap = res.get("depression", {}).get("shap_explanation", [])
     sleep_score = res.get("sleep", {}).get("score", 0)

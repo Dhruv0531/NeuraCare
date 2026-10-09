@@ -73,8 +73,11 @@ Rules:
             "X-Title": "NeuraCare AI Platform"
         }
         
-        # Try requested model, with reliable free fallbacks
-        candidate_models = [model, "meta-llama/llama-3.3-70b-instruct:free", "google/gemini-2.0-flash-lite-preview-02-05:free"]
+        # Try requested model, deduplicated
+        candidate_models = []
+        for m in [model, "liquid/lfm-2.5-2.6b:free", "nvidia/nemotron-3.5-lightning:free"]:
+            if m and m not in candidate_models:
+                candidate_models.append(m)
         
         for m in candidate_models:
             payload = json.dumps({
@@ -86,9 +89,12 @@ Rules:
 
             try:
                 req = urllib.request.Request(url, data=payload, headers=headers)
-                res = json.loads(urllib.request.urlopen(req, timeout=8).read().decode())
+                res = json.loads(urllib.request.urlopen(req, timeout=2.0).read().decode())
                 
-                content = res["choices"][0]["message"]["content"].strip()
+                msg_content = res.get("choices", [{}])[0].get("message", {}).get("content")
+                if not msg_content:
+                    continue
+                content = msg_content.strip()
                 
                 # Extract JSON array from markdown block if present
                 if "```" in content:

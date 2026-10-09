@@ -69,7 +69,24 @@ function generateFallbackPredictions(formData) {
   const depPct = toPct(phqScore, 27);
   const anxPct = toPct(gadScore, 21);
   const strPct = Math.min(100, 30 + Math.floor(Math.random() * 30));
-  const insPct = Math.min(100, 20 + Math.floor(Math.random() * 30));
+
+  // Compute sleep ISI score out of 28
+  let realSleepScore = 0;
+  if (Array.isArray(formData.sleep_answers) && formData.sleep_answers.length > 0) {
+    realSleepScore = formData.sleep_answers.slice(0, 7).reduce((s, v) => s + (parseInt(v) || 0), 0);
+  } else {
+    realSleepScore = Math.min(28, Math.round(((depPct + anxPct) / 200) * 28));
+  }
+
+  let sleepLevel = 'Low';
+  let sleepCategory = 'No clinically significant insomnia';
+  if (realSleepScore >= 15) {
+    sleepLevel = 'High';
+    sleepCategory = 'Clinical insomnia (Moderate/Severe)';
+  } else if (realSleepScore >= 8) {
+    sleepLevel = 'Moderate';
+    sleepCategory = 'Subthreshold insomnia';
+  }
 
   const makeObj = (pct) => {
     const h = pct / 100;
@@ -86,9 +103,9 @@ function generateFallbackPredictions(formData) {
   const dep = makeObj(depPct);
   const anx = makeObj(anxPct);
   const str = makeObj(strPct);
-  const ins = makeObj(insPct);
+  const ins = { label: sleepLevel, level: sleepLevel, score: realSleepScore, max_score: 28, category: sleepCategory, probabilities: { low: sleepLevel === 'Low' ? 1 : 0, moderate: sleepLevel === 'Moderate' ? 1 : 0, high: sleepLevel === 'High' ? 1 : 0 } };
 
-  const overall = Math.round((depPct + anxPct + strPct + insPct) / 4);
+  const overall = Math.round((depPct + anxPct + strPct + Math.round((realSleepScore / 28) * 100)) / 4);
 
   const defaultShap = [
     { feature: 'Q13A', description: 'Feeling sad and depressed', value: 2, impact: 0.45 },
@@ -101,13 +118,20 @@ function generateFallbackPredictions(formData) {
   anx.shap_explanation = defaultShap;
   str.shap_explanation = defaultShap;
 
+  const defaultRecommendations = [
+    "Practice 10-15 minutes of daily mindfulness meditation to build emotional regulation.",
+    "Establish a consistent evening wind-down routine and avoid screen time 1 hour before sleep.",
+    "Engage in 30 minutes of moderate aerobic exercise like brisk walking 4 days a week.",
+    "Use box breathing (4-4-4-4 count) to quickly calm your nervous system during stress peaks."
+  ];
+
   return {
     overallScore: overall,
     depression: dep,
     anxiety: anx,
     stress: str,
     insomnia: ins,
-    sleep: { level: ins.level, score: ins.score, max_score: 28, category: 'Subthreshold insomnia' },
+    sleep: { level: sleepLevel, score: realSleepScore, max_score: 28, category: sleepCategory },
     emotion: formData.text ? {
       status: 'success',
       emotions: [
@@ -116,6 +140,7 @@ function generateFallbackPredictions(formData) {
         { label: 'sadness', score: 0.38 }
       ]
     } : { status: 'not_available', message: 'No optional journal text provided' },
+    recommendations: defaultRecommendations,
     shapValues: {
       depression: defaultShap.map(s => ({ feature: s.description, value: s.impact })),
       anxiety: defaultShap.map(s => ({ feature: s.description, value: s.impact })),
