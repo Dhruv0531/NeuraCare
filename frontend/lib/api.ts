@@ -21,7 +21,13 @@ async function request<T>(
   if (res.status === 401) {
     localStorage.removeItem('neuracare_token');
     localStorage.removeItem('neuracare_user');
-    window.location.href = '/login';
+    // Only redirect to login if on strictly protected pages (clinician or profile)
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname;
+      if (currentPath.startsWith('/profile')) {
+        window.location.href = '/login';
+      }
+    }
     throw new Error('Unauthorized');
   }
 
@@ -67,7 +73,7 @@ export const api = {
         return {
           _id: data.record_id || 'fastapi_' + Date.now(),
           createdAt: new Date().toISOString(),
-          overallScore: 50,
+          overallScore: data.overallScore ?? data.overall_score ?? 50,
           depression: data.depression,
           anxiety: data.anxiety,
           stress: data.stress,
@@ -91,6 +97,40 @@ export const api = {
   },
 
   getHistory: async (): Promise<Assessment[]> => {
+    const token = getToken();
+    if (!token) {
+      try {
+        const res = await fetch('http://127.0.0.1:8000/history');
+        if (!res.ok) return [];
+        const rawDocs = await res.json();
+        return (rawDocs || []).map((item: any) => {
+          const preds = item.predictions || {};
+          return {
+            _id: item._id || 'hist_' + Date.now(),
+            createdAt: item.created_at || new Date().toISOString(),
+            overallScore: item.overallScore || preds.overallScore || 50,
+            depression: preds.depression || { label: 'Low', score: 0, probabilities: { low: 1, moderate: 0, high: 0 } },
+            anxiety: preds.anxiety || { label: 'Low', score: 0, probabilities: { low: 1, moderate: 0, high: 0 } },
+            stress: preds.stress || { label: 'Low', score: 0, probabilities: { low: 1, moderate: 0, high: 0 } },
+            insomnia: preds.sleep
+              ? { label: preds.sleep.level, score: preds.sleep.score, probabilities: { low: 0, moderate: 0, high: 0 } }
+              : { label: 'Low', score: 0, probabilities: { low: 1, moderate: 0, high: 0 } },
+            sleep: preds.sleep,
+            emotion: preds.emotion,
+            shapValues: {
+              depression: preds.depression?.shap_explanation || [],
+              anxiety: preds.anxiety?.shap_explanation || [],
+              stress: preds.stress?.shap_explanation || [],
+              insomnia: [],
+            },
+            recommendations: preds.recommendations || [],
+          } as Assessment;
+        });
+      } catch {
+        return [];
+      }
+    }
+
     try {
       return await request<Assessment[]>('/api/assessment/history');
     } catch {
@@ -103,7 +143,7 @@ export const api = {
           return {
             _id: item._id || 'hist_' + Date.now(),
             createdAt: item.created_at || new Date().toISOString(),
-            overallScore: 50,
+            overallScore: item.overallScore || preds.overallScore || 50,
             depression: preds.depression || { label: 'Low', score: 0, probabilities: { low: 1, moderate: 0, high: 0 } },
             anxiety: preds.anxiety || { label: 'Low', score: 0, probabilities: { low: 1, moderate: 0, high: 0 } },
             stress: preds.stress || { label: 'Low', score: 0, probabilities: { low: 1, moderate: 0, high: 0 } },

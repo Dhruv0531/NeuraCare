@@ -6,7 +6,10 @@ import { RotateCcw, HelpCircle, Sparkles, Moon, Lightbulb, CheckCircle2, BarChar
 import Disclaimer from '@/components/Disclaimer';
 import RiskBadge from '@/components/RiskBadge';
 import RadarChartComponent from '@/components/RadarChartComponent';
-import { Assessment, EmotionData, SleepData, ShapExplanation } from '@/lib/api';
+import ClinicalReportExport from '@/components/ClinicalReportExport';
+import LongitudinalTrendChart from '@/components/LongitudinalTrendChart';
+import ShapImpactChart from '@/components/ShapImpactChart';
+import { api, Assessment, EmotionData, SleepData, ShapExplanation } from '@/lib/api';
 
 const CONDITIONS = [
   { key: 'depression', label: 'Depression', questionnaire: 'PHQ-9 / DASS' },
@@ -51,18 +54,25 @@ const getRiskLabel = (obj: any): 'Low' | 'Moderate' | 'High' => {
 export default function ResultsPage() {
   const router = useRouter();
   const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const [history, setHistory] = useState<Assessment[]>([]);
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem('neuracare_result');
       if (raw) {
-        setAssessment(JSON.parse(raw));
+        const parsed = JSON.parse(raw);
+        setAssessment(parsed);
       } else {
         router.push('/assessment');
       }
     } catch {
       router.push('/assessment');
     }
+
+    // Fetch user history for longitudinal comparison
+    api.getHistory().then(res => {
+      if (Array.isArray(res)) setHistory(res);
+    }).catch(() => {});
   }, [router]);
 
   if (!assessment) {
@@ -118,8 +128,13 @@ export default function ResultsPage() {
             <RiskBadge label={overallRisk} size="lg" />
           </div>
           <p className="text-sm text-text-muted max-w-lg mx-auto">
-            Based on structured screening items evaluated by our trained XGBoost Machine Learning models.
+            Based on structured screening items evaluated by our trained XGBoost Machine Learning models and GoEmotions NLP text analysis.
           </p>
+
+          {/* Quick Clinical PDF Export Action */}
+          <div className="pt-2 flex justify-center">
+            <ClinicalReportExport assessment={assessment} />
+          </div>
         </div>
 
         {/* 3 Subscale Cards */}
@@ -164,62 +179,8 @@ export default function ResultsPage() {
           </div>
         </div>
 
-        {/* SHAP Feature Contribution Section */}
-        <div className="bg-white rounded-3xl border border-border shadow-card p-6 sm:p-8 space-y-6">
-          <div className="flex items-center gap-2 text-primary">
-            <HelpCircle className="h-5 w-5" />
-            <h2 className="text-xl font-bold text-text-main">Why did the model produce this result?</h2>
-          </div>
-          <p className="text-sm text-text-muted">
-            SHAP (SHapley Additive exPlanations) key contributing factors identified by our XGBoost explainability module:
-          </p>
-
-          <div className="space-y-4">
-            {CONDITIONS.map(c => {
-              const res = assessment[c.key];
-              const shapList: ShapExplanation[] = (res?.shap_explanation && res.shap_explanation.length > 0)
-                ? res.shap_explanation
-                : ((assessment.shapValues?.[c.key] || []).map(s => ({
-                    feature: s.feature,
-                    description: s.feature,
-                    value: s.value,
-                    impact: s.value
-                  })));
-
-              if (!shapList || shapList.length === 0) return null;
-
-              return (
-                <div key={c.key} className="bg-background rounded-2xl p-5 border border-border space-y-3">
-                  <h4 className="font-bold text-sm text-primary capitalize">Factors Influencing {c.label}:</h4>
-                  <div className="space-y-2">
-                    {shapList.map((item, idx) => {
-                      const isZeroValue = (item.value === 0 || item.impact === 0);
-                      const isPositiveRisk = item.impact > 0 && !isZeroValue;
-                      return (
-                        <div key={idx} className="flex justify-between items-center text-xs p-2.5 rounded-xl bg-white border border-border">
-                          <span className="font-medium text-text-main">
-                            {item.description || item.feature}
-                          </span>
-                          <span className={`font-bold px-2.5 py-1 rounded-full ${
-                            isPositiveRisk
-                              ? 'bg-red-50 text-red-600'
-                              : 'bg-emerald-50 text-emerald-700'
-                          }`}>
-                            {isZeroValue
-                              ? 'Symptom Absent (Lowers Risk)'
-                              : isPositiveRisk
-                                ? `High Risk Influence (+${item.impact})`
-                                : `Protective Factor (${item.impact})`}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* Explainable AI (XAI) Horizontal SHAP Impact Bars */}
+        <ShapImpactChart assessment={assessment} />
 
         {/* GoEmotions DistilBERT NLP Section */}
         <div className="bg-white rounded-3xl border border-border shadow-card p-6 sm:p-8 space-y-4">
@@ -286,6 +247,17 @@ export default function ResultsPage() {
           </div>
           <RiskBadge label={sleepData.level || 'Low'} size="md" />
         </div>
+
+        {/* Longitudinal Trajectory Graph */}
+        <LongitudinalTrendChart
+          history={history.length > 0 ? history : [assessment]}
+          title="Patient Mental Health Recovery & Risk Trajectory"
+          subtitle={
+            history.length > 1
+              ? `Tracking recovery trajectory across ${history.length} recorded assessments`
+              : 'Initial baseline evaluation point. Complete future assessments to monitor longitudinal trajectory.'
+          }
+        />
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-3 pb-8">

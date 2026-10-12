@@ -2,3 +2,9 @@ fastapi
 uvicorn
 pymongo
 python-dotenv
+numpy
+pandas
+xgboost
+shap
+torch
+transformers

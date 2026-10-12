@@ -36,7 +36,7 @@ async function getPredictions(formData) {
     const str = normalizeSubscale(data.stress);
 
     return {
-      overallScore: 50,
+      overallScore: data.overallScore ?? data.overall_score ?? 50,
       depression: dep,
       anxiety: anx,
       stress: str,
@@ -44,6 +44,7 @@ async function getPredictions(formData) {
       sleep: data.sleep,
       emotion: data.emotion,
       recommendations: data.recommendations || [],
+      fusion_metadata: data.fusion_metadata,
       shapValues: {
         depression: (dep.shap_explanation || []).map(s => ({ feature: s.description || s.feature, value: s.impact })),
         anxiety: (anx.shap_explanation || []).map(s => ({ feature: s.description || s.feature, value: s.impact })),

@@ -46,9 +46,9 @@ const ISI_SCALE = ['None / Very Satisfied', 'Mild / Satisfied', 'Moderate / Neut
 
 const STEPS = [
   { label: 'Screening', sublabel: 'PHQ & GAD' },
-  { label: 'Sleep Assessment', sublabel: 'ISI Index' },
+  { label: 'Sleep Assessment', sublabel: 'Sleep Quality' },
   { label: 'Demographics', sublabel: 'About You' },
-  { label: 'Optional Journal', sublabel: 'GoEmotions NLP' },
+  { label: 'Journal', sublabel: 'Personal Reflection' },
 ];
 
 function RadioRow({
@@ -56,34 +56,38 @@ function RadioRow({
 }: {
   question: string; fieldId: string; value: number | null; onChange: (v: number) => void; hasError: boolean; scale?: string[];
 }) {
+  const isFiveScale = scale.length === 5;
+
   return (
     <div className={`p-4 rounded-2xl border transition-all duration-200 ${hasError ? 'border-red-300 bg-red-50/40' : 'border-border bg-white hover:border-primary/30'}`}>
-      <p className="text-sm font-medium text-text-main mb-4 leading-relaxed">
+      <p className="text-sm font-medium text-text-main mb-3.5 leading-relaxed">
         {hasError && <span className="text-red-500 mr-1">*</span>}
         {question}
       </p>
-      <div className={`grid gap-2 ${scale.length === 5 ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'}`}>
-        {scale.map((label, i) => (
-          <label
-            key={i}
-            className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl cursor-pointer border-2 transition-all duration-150 min-h-[64px] justify-center ${
-              value === i
-                ? 'border-primary bg-primary-light text-primary'
-                : 'border-border hover:border-primary/40 text-text-muted'
-            }`}
-          >
-            <input
-              type="radio"
-              name={fieldId}
-              value={i}
-              checked={value === i}
-              onChange={() => onChange(i)}
-              className="sr-only"
-            />
-            <span className="text-base font-bold">{i}</span>
-            <span className="text-[11px] text-center leading-tight">{label}</span>
-          </label>
-        ))}
+      <div className={`grid gap-2 ${isFiveScale ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'}`}>
+        {scale.map((label, i) => {
+          const isSelected = value === i;
+          return (
+            <label
+              key={i}
+              className={`flex items-center justify-center p-3 rounded-xl cursor-pointer border-2 transition-all duration-150 min-h-[48px] select-none text-center ${
+                isSelected
+                  ? 'border-primary bg-primary-light text-primary font-semibold shadow-sm'
+                  : 'border-border hover:border-primary/40 bg-white hover:bg-slate-50/60 text-text-muted hover:text-text-main'
+              }`}
+            >
+              <input
+                type="radio"
+                name={fieldId}
+                value={i}
+                checked={isSelected}
+                onChange={() => onChange(i)}
+                className="sr-only"
+              />
+              <span className="text-xs sm:text-[13px] leading-snug">{label}</span>
+            </label>
+          );
+        })}
       </div>
     </div>
   );
@@ -161,6 +165,11 @@ export default function AssessmentPage() {
     } else if (step === 2) {
       const demoUn = Object.values(demographics).some(v => !v);
       if (demoUn) { setErrorMsg('Please select all demographic fields.'); return false; }
+    } else if (step === 3) {
+      if (!journalText.trim() || journalText.trim().length < 5) {
+        setErrorMsg('Please share a few words about how you are feeling to complete your assessment.');
+        return false;
+      }
     }
     setErrorMsg('');
     return true;
@@ -276,7 +285,7 @@ export default function AssessmentPage() {
           <div className="animate-fade-in space-y-6">
             <div>
               <h1 className="text-2xl font-bold text-text-main mb-1">Demographics & Background</h1>
-              <p className="text-text-muted text-sm">Required demographic indicators evaluated by the XGBoost ML model.</p>
+              <p className="text-text-muted text-sm">Please share a few general details about yourself to personalize your evaluation.</p>
             </div>
             <div className="bg-white rounded-2xl border border-border p-6 space-y-5">
               <SelectRow label="Age Group" fieldId="age" value={demographics.age} options={['Below 18', '18-24', '25-34', '35-44', '45-54', '55+']} onChange={v => setDemographics(p => ({ ...p, age: v }))} hasError={!!errorMsg && !demographics.age} />
@@ -289,28 +298,28 @@ export default function AssessmentPage() {
           </div>
         )}
 
-        {/* ── Step 3: GoEmotions Optional Text ── */}
+        {/* ── Step 3: Journal Reflection ── */}
         {step === 3 && (
           <div className="animate-fade-in space-y-6">
             <div>
-              <h1 className="text-2xl font-bold text-text-main mb-1">Optional Journal Entry (GoEmotions NLP)</h1>
+              <h1 className="text-2xl font-bold text-text-main mb-1">Personal Journal Reflection</h1>
               <p className="text-text-muted text-sm">
-                Describe how you feel today in your own words. Our Hugging Face GoEmotions DistilBERT NLP model will analyze emotional indicators in real time.
+                Describe how you have been feeling recently in your own words. Expressing your thoughts and emotional state helps deliver a more accurate, holistic assessment.
               </p>
             </div>
-            <div className="bg-white rounded-2xl border border-border p-6 space-y-4">
+            <div className="bg-white rounded-2xl border border-border p-6 space-y-4 shadow-sm">
               <label className="block text-sm font-semibold text-text-main">
-                How have you been feeling mentally or emotionally recently? (Optional)
+                How have you been feeling mentally or emotionally recently? <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={journalText}
                 onChange={e => setJournalText(e.target.value.slice(0, 1000))}
                 rows={5}
-                placeholder="Example: I have been feeling quite anxious about my upcoming exams and finding it difficult to stay focused or rest peacefully..."
-                className="w-full p-4 rounded-xl border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none"
+                placeholder="Share what has been on your mind lately, your current mood, energy levels, or any challenges you are experiencing..."
+                className="w-full p-4 rounded-xl border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none leading-relaxed"
               />
               <div className="flex justify-between items-center text-xs text-text-muted">
-                <span>GoEmotions DistilBERT analysis will detect emotional tone</span>
+                <span>Express your thoughts naturally to help us evaluate your overall well-being</span>
                 <span className={journalText.length >= 950 ? 'text-red-500 font-bold' : ''}>
                   {journalText.length} / 1000 characters
                 </span>

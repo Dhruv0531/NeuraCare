@@ -75,7 +75,7 @@ const steps = [
     num: '03',
     icon: FileText,
     title: 'Explainable Insights & PDF Report',
-    desc: 'Receive SHAP feature impact cards, emotional language bars, personalized recommendations, and PDF export stored securely in MongoDB Atlas.',
+    desc: 'Receive SHAP feature impact cards, emotional language indicators, personalized recommendations, and downloadable clinical PDF export.',
     color: 'bg-success-light text-success',
   },
 ];

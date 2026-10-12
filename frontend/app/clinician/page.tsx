@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, AlertTriangle, Activity, Sparkles, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
+import { Users, AlertTriangle, Activity, Sparkles, RefreshCw, ClipboardList } from 'lucide-react';
 import RiskBadge from '@/components/RiskBadge';
 import { api, ClinicianSummary } from '@/lib/api';
 
@@ -33,14 +34,22 @@ export default function ClinicianDashboard() {
         <div className="flex flex-wrap justify-between items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-text-main mb-1">Clinician Portal</h1>
-            <p className="text-sm text-text-muted">Aggregate Patient Risk Analytics & GoEmotions Indicator Tracking (MongoDB Atlas)</p>
+            <p className="text-sm text-text-muted">Aggregate Patient Risk Analytics & Clinical Overview</p>
           </div>
-          <button
-            onClick={loadData}
-            className="inline-flex items-center gap-2 bg-white border border-border px-4 py-2.5 rounded-xl text-sm font-semibold hover:border-primary text-text-main transition-colors shadow-sm"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh Metrics
-          </button>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/assessment"
+              className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm"
+            >
+              <ClipboardList className="h-4 w-4" /> Take Assessment
+            </Link>
+            <button
+              onClick={loadData}
+              className="inline-flex items-center gap-2 bg-white border border-border px-4 py-2.5 rounded-xl text-sm font-semibold hover:border-primary text-text-main transition-colors shadow-sm"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh Metrics
+            </button>
+          </div>
         </div>
 
         {/* Metric Cards */}
@@ -83,11 +92,19 @@ export default function ClinicianDashboard() {
           {loading ? (
             <div className="p-12 text-center text-text-muted">
               <div className="animate-spin rounded-full h-8 w-8 border-2 border-border border-t-primary mx-auto mb-3" />
-              Fetching clinician cohort metrics...
+              Fetching clinical cohort metrics...
             </div>
           ) : !summary || !summary.recent_activity || summary.recent_activity.length === 0 ? (
-            <div className="p-12 text-center text-text-muted">
-              No recent patient activity recorded in MongoDB Atlas.
+            <div className="p-12 text-center text-text-muted space-y-3">
+              <p>No recent patient activity recorded yet.</p>
+              <div>
+                <Link
+                  href="/assessment"
+                  className="inline-flex items-center gap-2 bg-primary text-white text-xs font-semibold px-4 py-2 rounded-xl hover:bg-primary-dark transition-colors"
+                >
+                  <ClipboardList className="h-3.5 w-3.5" /> Start First Assessment
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -100,7 +117,7 @@ export default function ClinicianDashboard() {
                     <th className="px-6 py-4">Depression</th>
                     <th className="px-6 py-4">Anxiety</th>
                     <th className="px-6 py-4">Stress</th>
-                    <th className="px-6 py-4">Detected Emotions</th>
+                    <th className="px-6 py-4">Emotional Tone</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">

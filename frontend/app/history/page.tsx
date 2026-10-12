@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Brain, Activity, Sparkles, Clock, ArrowRight } from 'lucide-react';
 import RiskBadge from '@/components/RiskBadge';
+import LongitudinalTrendChart from '@/components/LongitudinalTrendChart';
+import ClinicalReportExport from '@/components/ClinicalReportExport';
 import { api, Assessment } from '@/lib/api';
 
 export default function HistoryPage() {
@@ -38,7 +40,7 @@ export default function HistoryPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-text-main mb-1">Assessment History</h1>
-          <p className="text-sm text-text-muted">Longitudinal Score History (Fetched Live from MongoDB Atlas)</p>
+          <p className="text-sm text-text-muted">Longitudinal Score History & Clinical Progress Trajectory</p>
         </div>
 
         {loading ? (
@@ -59,27 +61,39 @@ export default function HistoryPage() {
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
-            {data.map((item, index) => {
-              const depLevel = item.depression?.label || 'Low';
-              const anxLevel = item.anxiety?.label || 'Low';
-              const strLevel = item.stress?.label || 'Low';
-              const sleepLevel = item.sleep?.level || item.insomnia?.label || 'Low';
+          <div className="space-y-6">
+            {/* Longitudinal Recovery & Risk Trend Graph */}
+            <LongitudinalTrendChart
+              history={data}
+              title="Longitudinal Recovery & Symptom Trajectory"
+              subtitle="Tracks multi-session risk scores, depression, anxiety, and sleep metrics live from MongoDB"
+            />
 
-              const levels = [depLevel, anxLevel, strLevel];
-              const overallRisk = levels.includes('High') ? 'High' : (levels.includes('Moderate') ? 'Moderate' : 'Low');
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-text-main pt-2">Historical Assessment Logs ({data.length})</h2>
+              {data.map((item, index) => {
+                const depLevel = item.depression?.label || 'Low';
+                const anxLevel = item.anxiety?.label || 'Low';
+                const strLevel = item.stress?.label || 'Low';
+                const sleepLevel = item.sleep?.level || item.insomnia?.label || 'Low';
 
-              const emotions = item.emotion?.emotions || [];
+                const levels = [depLevel, anxLevel, strLevel];
+                const overallRisk = levels.includes('High') ? 'High' : (levels.includes('Moderate') ? 'Moderate' : 'Low');
 
-              return (
-                <div key={index} className="bg-white rounded-2xl border border-border p-6 shadow-sm space-y-4 hover:border-primary/30 transition-all">
-                  <div className="flex flex-wrap justify-between items-center gap-2">
-                    <div className="flex items-center gap-2 text-xs text-text-muted">
-                      <Calendar className="h-4 w-4" />
-                      {formatDate(item.createdAt)}
+                const emotions = item.emotion?.emotions || [];
+
+                return (
+                  <div key={index} className="bg-white rounded-2xl border border-border p-6 shadow-sm space-y-4 hover:border-primary/30 transition-all">
+                    <div className="flex flex-wrap justify-between items-center gap-3">
+                      <div className="flex items-center gap-2 text-xs text-text-muted">
+                        <Calendar className="h-4 w-4" />
+                        {formatDate(item.createdAt)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RiskBadge label={overallRisk} size="md" />
+                        <ClinicalReportExport assessment={item} />
+                      </div>
                     </div>
-                    <RiskBadge label={overallRisk} size="md" />
-                  </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs border-y border-border/60 py-3">
                     <div>
@@ -114,6 +128,7 @@ export default function HistoryPage() {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
       </div>

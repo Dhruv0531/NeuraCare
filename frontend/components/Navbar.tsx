@@ -55,10 +55,19 @@ export default function Navbar() {
             ) : user?.role === 'clinician' ? (
               <>
                 <Link href="/clinician" className={linkCls('/clinician')}>
-                  <span className="flex items-center gap-1.5"><LayoutDashboard className="h-4 w-4" /> Dashboard</span>
+                  <span className="flex items-center gap-1.5"><LayoutDashboard className="h-4 w-4" /> Clinician Portal</span>
+                </Link>
+                <Link href="/history" className={linkCls('/history')}>
+                  <span className="flex items-center gap-1.5"><History className="h-4 w-4" /> History</span>
                 </Link>
                 <Link href="/profile" className={linkCls('/profile')}>
                   <span className="flex items-center gap-1.5"><User className="h-4 w-4" /> Profile</span>
+                </Link>
+                <Link
+                  href="/assessment"
+                  className="bg-primary hover:bg-primary-dark text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-px"
+                >
+                  <span className="flex items-center gap-1.5"><ClipboardList className="h-4 w-4" /> Take Assessment</span>
                 </Link>
                 <button onClick={handleLogout} className="flex items-center gap-1.5 text-sm font-medium text-text-muted hover:text-danger transition-colors">
                   <LogOut className="h-4 w-4" /> Logout
@@ -132,7 +141,19 @@ export default function Navbar() {
               ) : (
                 <>
                   {user?.role === 'clinician' ? (
-                    <MobileLink href="/clinician" label="Clinician Dashboard" onClick={() => setMobileOpen(false)} />
+                    <>
+                      <MobileLink href="/clinician" label="Clinician Portal" onClick={() => setMobileOpen(false)} />
+                      <MobileLink href="/history" label="History" onClick={() => setMobileOpen(false)} />
+                      <div className="pt-2">
+                        <Link
+                          href="/assessment"
+                          onClick={() => setMobileOpen(false)}
+                          className="block w-full bg-primary text-white text-center font-semibold py-2.5 rounded-xl text-sm"
+                        >
+                          Take Assessment
+                        </Link>
+                      </div>
+                    </>
                   ) : (
                     <>
                       <MobileLink href="/assessment" label="Take Assessment" onClick={() => setMobileOpen(false)} />

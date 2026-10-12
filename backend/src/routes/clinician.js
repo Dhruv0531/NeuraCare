@@ -4,11 +4,7 @@ const Assessment = require('../models/Assessment');
 const User = require('../models/User');
 
 // GET /api/clinician/summary
-router.get('/summary', auth, async (req, res) => {
-  if (req.user.role !== 'clinician') {
-    return res.status(403).json({ message: 'Access denied: Clinician role required' });
-  }
-
+router.get('/summary', async (req, res) => {
   try {
     const fetch = (await import('node-fetch')).default;
     const mlRes = await fetch(`${process.env.ML_API_URL || 'http://localhost:8000'}/clinician/summary`, {
@@ -62,10 +58,7 @@ router.get('/summary', auth, async (req, res) => {
 });
 
 // GET /api/clinician/cohort
-router.get('/cohort', auth, async (req, res) => {
-  if (req.user.role !== 'clinician') {
-    return res.status(403).json({ message: 'Access denied: Clinician role required' });
-  }
+router.get('/cohort', async (req, res) => {
 
   try {
     const assessments = await Assessment.aggregate([
