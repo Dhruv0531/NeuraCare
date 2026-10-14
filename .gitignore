@@ -46,3 +46,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Local Binaries and Tools
+tools/
+*.exe
