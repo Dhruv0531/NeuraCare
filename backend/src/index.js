@@ -12,8 +12,25 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ── Middleware ────────────────────────────────────────────────────────────
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://neuracare.vercel.app',
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://neuracare.vercel.app'],
+  origin: (origin, callback) => {
+    // allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (
+      allowedOrigins.includes(origin) ||
+      /\.vercel\.app$/.test(origin)
+    ) {
+      return callback(null, true);
+    }
+    // Allow for development/previews
+    return callback(null, true);
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '1mb' }));
