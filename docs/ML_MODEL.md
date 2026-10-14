@@ -165,7 +165,109 @@ To translate raw probabilities, SHAP factors, and emotion scores into compassion
 
 ---
 
-## 6. Offline / Fallback Resiliency Mode
+## 6. Multimodal Fusion Engine: Combining Models for Superior Accuracy
+
+Single-modality mental health assessments frequently suffer from diagnostic blind spots. NeuraCare solves this by implementing an intelligent **Late-Fusion Multimodal Engine** (`ml_service.py:fuse_predictions`) that cross-validates structured questionnaire responses, deep linguistic signals, and somatic sleep indices.
+
+```
+  ┌─────────────────────────┐     ┌───────────────────────────┐     ┌──────────────────────────┐
+  │ 3x XGBoost Classifiers  │     │  DistilBERT GoEmotions    │     │ Insomnia Severity (ISI)  │
+  │ Baseline Probabilities: │     │ Affective Distress vs     │     │ Somatic Sleep Baseline   │
+  │ P(Low), P(Mod), P(High) │     │ Protective Valence        │     │ Offset Delta             │
+  └────────────┬────────────┘     └─────────────┬─────────────┘     └────────────┬─────────────┘
+               │                                │                                │
+               │              Scale-Specific Emotion Weight                      │
+               │              w_emotion = 0.20 - 0.22                            │
+               │                                │              Sleep Weight      │
+               │                                │              w_sleep = 0.12 - 0.15
+               │                                │                                │
+               ▼                                ▼                                ▼
+         ┌─────────────────────────────────────────────────────────────────────────────┐
+         │                    Multimodal Bayesian Fusion Engine                        │
+         │  1. Compute Net Emotion: RawDistress - (0.6 * ProtectiveScore)             │
+         │  2. Compute Risk Shift: Δ = (w_emotion * NetEmotion) + (w_sleep * Δ_sleep) │
+         │  3. Clamp Δ to [-0.35, +0.35] (Prevents Over-Skewing)                       │
+         │  4. Recalibrate & Re-normalize Probabilities (Σ P = 1.0)                    │
+         │  5. Dynamically Inject NLP & Sleep Factors into Unified SHAP Table          │
+         └──────────────────────────────────────┬──────────────────────────────────────┘
+                                                │
+                                                ▼
+                               ┌────────────────────────────────┐
+                               │  Calibrated Clinical Decision  │
+                               │  - Higher Diagnostic Accuracy  │
+                               │  - Self-Report Bias Mitigation │
+                               │  - Unified Multimodal XAI      │
+                               └────────────────────────────────┘
+```
+
+### 6.1 Why Single Modalities Fail
+
+| Modality | Inherent Clinical Limitation | How NeuraCare Resolves It |
+| :--- | :--- | :--- |
+| **Questionnaires Only** (PHQ-9 / DASS) | **Self-Reporting Bias**: Patients often minimize symptoms due to stigma, or over-report due to acute transient frustration. | Linguistic emotion analysis and objective sleep metrics catch discrepancies and recalibrate probabilities. |
+| **Text NLP Only** (Journal Notes) | **Lack of Clinical Cutoffs**: A user writing *"I feel overwhelmed"* might just be having a busy afternoon rather than clinical Major Depressive Disorder. | Text cannot override established psychiatric baseline thresholds; it acts as a calibrated modifier ($w \approx 0.22$). |
+| **Sleep Only** (Insomnia Index) | **Transdiagnostic Confounder**: Poor sleep can stem from physical pain or jet lag rather than psychological distress. | Sleep deficits only amplify psychiatric risk when confirmed by questionnaire or affective distress. |
+
+---
+
+### 6.2 The Mathematical Fusion Mechanism
+
+For each psychiatric scale ($S \in \{\text{Depression}, \text{Anxiety}, \text{Stress}\}$), the engine executes the following steps:
+
+#### Step 1: Establish the Tabular Baseline
+The trained XGBoost classifier produces a prior probability distribution from the questionnaire:
+$$P_0 = [P(\text{Low}), P(\text{Moderate}), P(\text{High})]$$
+
+#### Step 2: Extract Affective Emotion Signals
+DistilBERT analyzes the user's free-text journal entry across 27 emotions. These are clustered into clinical distress and protective categories:
+
+- **Depression Distress Cluster**: `sadness` (1.0), `grief` (1.0), `disappointment` (0.7), `remorse` (0.6), `embarrassment` (0.4)
+- **Anxiety Distress Cluster**: `fear` (1.0), `nervousness` (1.0), `confusion` (0.5), `embarrassment` (0.4)
+- **Stress Distress Cluster**: `anger` (1.0), `annoyance` (0.9), `disgust` (0.6), `nervousness` (0.6)
+- **Protective / Resilient Cluster**: `joy` (0.9), `optimism` (0.9), `gratitude` (0.8), `relief` (0.8), `love` (0.7), `pride` (0.6), `admiration` (0.5)
+
+The **Net Emotional Distress** balances vulnerability against resilience:
+$$\text{NetEmotion} = \text{Distress} - (0.6 \times \text{ProtectiveScore})$$
+*(clamped to $[-1.0, +1.0]$)*
+
+#### Step 3: Compute Somatic Sleep Offset
+The Insomnia Severity Index (ISI, 0–28 scale) is normalized against an asymptomatic baseline ($7/28 = 0.25$):
+$$\Delta_{\text{sleep}} = \left(\frac{\text{ISI}}{28.0}\right) - 0.25$$
+
+#### Step 4: Calibrate the Combined Shift Delta
+The net shift $\Delta$ is computed using clinically calibrated modality weights:
+$$\Delta = (w_{\text{emotion}} \times \text{NetEmotion}) + (w_{\text{sleep}} \times \Delta_{\text{sleep}})$$
+*(clamped to $[-0.35, +0.35]$ to prevent extreme single-modality distortion)*
+
+| Scale | Emotion Weight ($w_{\text{emotion}}$) | Sleep Weight ($w_{\text{sleep}}$) |
+| :--- | :---: | :---: |
+| **Depression** | $0.22$ | $0.14$ |
+| **Anxiety** | $0.22$ | $0.12$ |
+| **Stress** | $0.20$ | $0.15$ |
+
+#### Step 5: Probability Recalibration & Normalization
+- If $\Delta > 0$ (Elevated Distress / Severe Sleep Deprivation):
+  $$P(\text{High})' = P(\text{High}) + (0.65 \times \Delta)$$
+  $$P(\text{Moderate})' = P(\text{Moderate}) + (0.35 \times \Delta)$$
+  $$P(\text{Low})' = \max(0.01, P(\text{Low}) - \Delta)$$
+- If $\Delta < 0$ (High Resilience / Healthy Sleep):
+  Probability mass smoothly shifts toward $P(\text{Low})'$.
+- Probabilities are re-normalized so $\sum P' = 1.0$.
+
+---
+
+### 6.3 Unified Multimodal Explainability (XAI)
+
+When multiple models are fused, explainability must not be lost. NeuraCare dynamically injects calibrated multimodal factors directly into the SHAP explanation table:
+
+1. **`NLP_Emotional_Tone`**: Injected at the top of the explanation ranking when significant emotional distress or protective optimism is detected, displaying the top emotions and their exact mathematical shift impact.
+2. **`ISI_Sleep_Disruption`**: Injected when clinically significant insomnia (ISI $\ge 10$) is present, displaying the sleep contribution severity.
+
+This enables clinicians to see both tabular survey drivers (e.g. *"Feeling sad and depressed"*) and linguistic drivers (e.g. *"Emotional Text Signal (sadness: 84%, fear: 62%)"*) on a single unified chart.
+
+---
+
+## 7. Offline / Fallback Resiliency Mode
 
 Healthcare applications must not crash when an ML server is cold or restarting.
 
@@ -176,7 +278,7 @@ If the Python ML service is unreachable (e.g., tunnel offline or model reloading
 
 ---
 
-## 7. Directory Structure of the ML Service
+## 8. Directory Structure of the ML Service
 
 ```
 src/backend/
