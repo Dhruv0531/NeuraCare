@@ -11,11 +11,27 @@ interface RadarChartComponentProps {
 }
 
 export default function RadarChartComponent({ assessment }: RadarChartComponentProps) {
+  // Convert probability distributions to 0-100 risk percentages
+  // (raw .score is a class index 0/1/2, not a percentage)
+  const toRiskPct = (r: any): number => {
+    if (r?.probabilities) {
+      return Math.round((r.probabilities.moderate || 0) * 50 + (r.probabilities.high || 0) * 100);
+    }
+    // Fallback for label-only data
+    if (r?.label === 'High') return 85;
+    if (r?.label === 'Moderate') return 50;
+    return 15;
+  };
+
+  // Insomnia uses ISI score (0-28), normalize to 0-100
+  const sleepScore = assessment.sleep?.score ?? assessment.insomnia?.score ?? 0;
+  const insomniaPct = Math.min(100, Math.round((sleepScore / 28) * 100));
+
   const data = [
-    { condition: 'Depression', score: assessment.depression.score },
-    { condition: 'Anxiety', score: assessment.anxiety.score },
-    { condition: 'Stress', score: assessment.stress.score },
-    { condition: 'Insomnia', score: assessment.insomnia.score },
+    { condition: 'Depression', score: toRiskPct(assessment.depression) },
+    { condition: 'Anxiety', score: toRiskPct(assessment.anxiety) },
+    { condition: 'Stress', score: toRiskPct(assessment.stress) },
+    { condition: 'Insomnia', score: insomniaPct },
   ];
 
   return (

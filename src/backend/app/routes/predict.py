@@ -36,6 +36,8 @@ def predict(payload: Dict[str, Any]):
 
     # 2. Run ISI sleep calculation
     sleep_raw = payload.get("sleep_answers", raw_answers.get("sleep_answers", raw_answers.get("sleep", [])))
+    if not isinstance(sleep_raw, list):
+        sleep_raw = []
     sleep_result = calculate_sleep_score(sleep_raw)
 
     # 3. Run GoEmotions NLP text analysis if free-text provided

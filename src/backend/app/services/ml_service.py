@@ -171,9 +171,9 @@ class MLService:
                 val = float(df_feats.iloc[0][f_name])
                 raw_impact = float(class_shap[idx])
                 
-                # If value is 0, the symptom was absent (0 impact towards risk)
-                # If value > 0, the symptom contributed positively to risk
-                if val == 0:
+                # If value is 0 and impact is positive, the absent symptom shouldn't drive risk up
+                # But preserve negative (protective) SHAP values — absence actively reducing risk is valid
+                if val == 0 and raw_impact > 0:
                     adjusted_impact = 0.0
                 else:
                     adjusted_impact = round(raw_impact, 4)

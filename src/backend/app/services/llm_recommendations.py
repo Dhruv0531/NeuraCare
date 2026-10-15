@@ -89,7 +89,7 @@ Rules:
 
             try:
                 req = urllib.request.Request(url, data=payload, headers=headers)
-                res = json.loads(urllib.request.urlopen(req, timeout=2.0).read().decode())
+                res = json.loads(urllib.request.urlopen(req, timeout=8.0).read().decode())
                 
                 msg_content = res.get("choices", [{}])[0].get("message", {}).get("content")
                 if not msg_content:

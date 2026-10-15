@@ -86,7 +86,7 @@ export default function ResultDetailPage() {
               </button>
             ))}
           </div>
-          <ShapChart data={assessment.shapValues[shapTab]} />
+          <ShapChart data={assessment.shapValues?.[shapTab] || (assessment[shapTab]?.shap_explanation || []).map((s: any) => ({ feature: s.description || s.feature, value: s.impact ?? s.value }))} />
         </div>
       </div>
     </div>
