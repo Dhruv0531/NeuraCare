@@ -11,7 +11,7 @@ NeuraCare uses **MongoDB**, a document-oriented NoSQL database, hosted on a **Mo
 ### Why MongoDB?
 - **Flexible Clinical Documents**: Psychological assessments contain nested dimensions (probabilities, SHAP factor explanations, emotional multi-labels, and demographic forms) that vary depending on the instrument used. A document store naturally represents this structure without complex SQL joins.
 - **High-Performance Time Series / History**: Longitudinal tracking requires rapidly appending evaluation records and fetching them sorted by timestamp.
-- **Zero-Cost Cloud Tier**: MongoDB Atlas provides a generous **M0 Free Tier** (512 MB storage, shared RAM, automated backups, and 24/7 uptime without credit card requirements).
+- **Zero-Cost Cloud Tier**: MongoDB Atlas provides an **M0 Free Tier** (512 MB storage, shared RAM, zero hosting cost). Note that automated point-in-time backup snapshots require dedicated M10+ tiers, and inactive M0 clusters pause after 30–60 days of inactivity.
 
 ---
 
@@ -127,8 +127,19 @@ const assessmentSchema = new mongoose.Schema({
     required: false // Optional to support anonymous assessments
   },
   overallScore: { 
-    type: Number, 
-    default: 50 
+    type: Number 
+  },
+  scoringMode: {
+    type: String,
+    enum: ['ml_multimodal', 'clinical_fallback'],
+    default: 'clinical_fallback'
+  },
+  crisis_flag: {
+    type: Boolean,
+    default: false
+  },
+  crisis_guidance: {
+    type: mongoose.Schema.Types.Mixed
   },
   depression: riskResultSchema,
   anxiety: riskResultSchema,
@@ -144,19 +155,24 @@ const assessmentSchema = new mongoose.Schema({
   },
   formData: { type: mongoose.Schema.Types.Mixed },
 }, { timestamps: true });
+
+// Compound index for optimized patient history queries
+assessmentSchema.index({ userId: 1, createdAt: -1 });
 ```
 
 #### Key Fields:
 - `userId`: Foreign key linking to the `User` collection. Enables fast lookup of a patient's historical records.
-- `overallScore`: A composite wellness score between 0 and 100 (higher score = better overall well-being).
+- `overallScore`: A composite wellness score between 0 and 100.
+- `scoringMode`: Distinguishes evaluations processed by the AI pipeline (`ml_multimodal`) versus the deterministic fallback (`clinical_fallback`).
+- `crisis_flag` & `crisis_guidance`: Deterministic crisis response triggered whenever self-harm or critical distress items are reported.
 - `depression`, `anxiety`, `stress`: Detailed sub-documents holding:
   - `label`: Categorical risk classification (`Low`, `Moderate`, `High`).
   - `probabilities`: Multi-class probability distribution computed by XGBoost.
   - `shap_explanation`: Ranked list of top symptoms pushing risk up or down.
 - `emotion`: Contains the DistilBERT NLP results (detected dominant emotion, intensity, and sentiment).
-- `sleep`: Sleep duration, disruption flags, and insomnia risk calculated from clinical sleep hygiene rules.
-- `formData`: Exact snapshot of answers provided by the user. Preserves clinical auditing compliance.
-- `timestamps`: Automatically creates `createdAt` and `updatedAt` for longitudinal charting.
+- `sleep`: Somatic Insomnia Severity Index (ISI, 0–28) metrics.
+- `formData`: Exact snapshot of answers provided by the user for longitudinal continuity.
+- `timestamps`: Automatically creates `createdAt` and `updatedAt`. Indexed with `{ userId: 1, createdAt: -1 }`.
 
 ---
 
@@ -172,7 +188,6 @@ MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.lxyomk.mongodb.net/neur
 ```javascript
 mongoose
   .connect(process.env.MONGODB_URI, {
-    tlsAllowInvalidCertificates: true,
     serverSelectionTimeoutMS: 5000,
   })
   .then(() => console.log('✅ MongoDB connected'))

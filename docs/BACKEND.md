@@ -83,13 +83,13 @@ backend/
 
 ### 4.2 Authentication (`/api/auth`)
 - **`POST /api/auth/register`**
-  - **Body**: `{ "name": "Jane Doe", "email": "jane@example.com", "password": "...", "role": "user" }`
-  - **Behavior**: Hashes password using bcrypt (10 rounds), checks for duplicates, creates user, returns signed JWT.
-  - **Response**: `{ "token": "jwt...", "user": { "id": "...", "name": "...", "email": "...", "role": "..." } }`
+  - **Body**: `{ "name": "Jane Doe", "email": "jane@example.com", "password": "..." }`
+  - **Behavior**: Hashes password using bcrypt (12 rounds), checks for duplicates, creates user with server-enforced `role: 'user'` (privilege escalation protection), returns confirmation.
+  - **Response**: `{ "message": "Account created successfully", "userId": "..." }`
 
 - **`POST /api/auth/login`**
   - **Body**: `{ "email": "jane@example.com", "password": "..." }`
-  - **Behavior**: Validates credentials against hashed password, signs new 7-day JWT.
+  - **Behavior**: Validates credentials against hashed password, signs new 7-day JWT. Rate-limited to 20 requests per 15 minutes.
   - **Response**: `{ "token": "jwt...", "user": { ... } }`
 
 - **`GET /api/auth/me`**
@@ -100,24 +100,28 @@ backend/
 
 ### 4.3 Assessments (`/api/assessment`)
 - **`POST /api/assessment/submit`**
-  - **Auth**: Optional (supports anonymous guest evaluations, automatically links to `userId` if logged in).
+  - **Auth**: Optional (supports anonymous guest evaluations, automatically links to `userId` if logged in). Rate-limited to 60 submissions per 15 minutes.
   - **Body**:
     ```json
     {
-      "phq": { "q1": 2, "q2": 1, ... },
-      "gad": { "q1": 3, "q2": 2, ... },
-      "sleepHours": 6.5,
-      "journalText": "Feeling stressed about work deadlines and unable to sleep well.",
-      "demographics": { "age": 25, "gender": 1 }
+      "phq_interest": 2,
+      "phq_depressed": 1,
+      "phq_sleep": 2,
+      "gad_nervous": 3,
+      "gad_relax": 2,
+      "sleep_answers": [1, 2, 0, 3, 1, 2, 2],
+      "text": "Feeling stressed about work deadlines and unable to sleep well.",
+      "age": 25,
+      "gender": 1
     }
     ```
   - **Orchestration Flow**:
-    1. Validates questionnaire inputs.
+    1. Validates questionnaire inputs and executes deterministic emergency crisis triage check.
     2. Sends payload to `process.env.ML_API_URL + '/predict'`.
-    3. If ML service responds: receives XGBoost risk levels, SHAP impact scores, DistilBERT emotions, and LLM clinical recommendations.
-    4. If ML service is offline: gracefully calculates deterministic fallback scores.
-    5. Saves the complete evaluation into MongoDB `assessments` collection.
-    6. Returns the full clinical summary to the frontend.
+    3. If ML service responds: receives calibrated risk levels, SHAP impact scores, DistilBERT emotions, and AI recommendations (`scoringMode: "ml_multimodal"`).
+    4. If ML service is offline: gracefully calculates deterministic fallback scores with validated clinical rules (`scoringMode: "clinical_fallback"`).
+    5. Saves the complete evaluation into MongoDB `assessments` collection with indexed user retrieval.
+    6. Returns the full clinical summary and transparency mode indicator to the frontend.
 
 - **`GET /api/assessment/history`**
   - **Auth**: Required
@@ -125,7 +129,7 @@ backend/
 
 - **`GET /api/assessment/:id`**
   - **Auth**: Required
-  - **Response**: Full record of a specific assessment (including raw inputs, SHAP explanations, and recommendations).
+  - **Response**: Full record of a specific assessment (including raw inputs, SHAP explanations, recommendations, and scoring mode).
 
 ---
 
@@ -146,11 +150,15 @@ backend/
 
 ## 5. Security & Cross-Origin Configuration
 
-### Dynamic CORS Policy
-The backend dynamically inspects the HTTP `Origin` header to allow legitimate frontend clients while blocking unauthorized origins:
+### Security Middleware & Strict CORS Policy
+The backend implements multi-layered security controls:
+1. **Helmet**: Secures HTTP headers against XSS, clickjacking, and MIME-type sniffing.
+2. **Rate Limiting**: Defends authentication and submission endpoints against brute-force attacks via `express-rate-limit`.
+3. **Strict Origin Validation**: Explicitly allows verified clients while blocking unauthorized domains:
 ```javascript
 const allowedOrigins = [
   'http://localhost:3000',
+  'https://neura-care-woad.vercel.app',
   'https://neuracare.vercel.app',
   process.env.CLIENT_URL,
 ].filter(Boolean);
@@ -160,11 +168,12 @@ app.use(cors({
     if (!origin) return callback(null, true);
     if (
       allowedOrigins.includes(origin) ||
-      /\.vercel\.app$/.test(origin)  // Allows all Vercel preview & production URLs
+      /^https:\/\/neura-care.*\.vercel\.app$/.test(origin) ||
+      /^http:\/\/localhost:\d+$/.test(origin)
     ) {
       return callback(null, true);
     }
-    return callback(null, true);
+    return callback(new Error(`CORS Error: Origin ${origin} not permitted.`));
   },
   credentials: true,
 }));

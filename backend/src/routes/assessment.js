@@ -2,9 +2,29 @@ const router = require('express').Router();
 const auth = require('../middleware/auth');
 const Assessment = require('../models/Assessment');
 
+function checkCrisisSignals(formData) {
+  const selfHarm = parseInt(formData.phq_self_harm) || 0;
+  if (selfHarm > 0) {
+    return {
+      alert: true,
+      severity: 'CRITICAL_ATTENTION_REQUIRED',
+      message: 'Your responses indicate thoughts of self-harm or deep distress. Immediate confidential support is available 24/7.',
+      resources: [
+        { name: 'Suicide & Crisis Lifeline (US & Canada)', contact: 'Call or text 988', web: 'https://988lifeline.org' },
+        { name: 'Crisis Text Line', contact: 'Text HOME to 741741', web: 'https://www.crisistextline.org' },
+        { name: 'Tele-MANAS (India)', contact: 'Toll-Free 14416 / 1800-891-4416', web: 'https://telemanas.mohfw.gov.in' },
+        { name: 'Find A Helpline (Worldwide)', contact: 'Confidential free local helplines', web: 'https://findahelpline.com' }
+      ]
+    };
+  }
+  return { alert: false };
+}
+
 // Helper: call ML API or construct complete prediction object
 async function getPredictions(formData) {
   const mlApiUrl = process.env.ML_API_URL || 'http://localhost:8000';
+  const crisis = checkCrisisSignals(formData);
+
   try {
     const fetch = (await import('node-fetch')).default;
     const res = await fetch(`${mlApiUrl}/predict`, {
@@ -36,6 +56,9 @@ async function getPredictions(formData) {
     const str = normalizeSubscale(data.stress);
 
     return {
+      scoringMode: 'ml_multimodal',
+      crisis_flag: crisis.alert,
+      crisis_guidance: crisis,
       overallScore: data.overallScore ?? data.overall_score ?? 50,
       depression: dep,
       anxiety: anx,
@@ -59,6 +82,7 @@ async function getPredictions(formData) {
 }
 
 function generateFallbackPredictions(formData) {
+  const crisis = checkCrisisSignals(formData);
   const phqFields = ['phq_interest','phq_depressed','phq_sleep','phq_tired','phq_appetite','phq_failure','phq_concentrate','phq_slow_restless','phq_self_harm'];
   const gadFields = ['gad_nervous','gad_cant_stop','gad_worry_much','gad_relax','gad_restless','gad_irritable','gad_afraid'];
 
@@ -69,7 +93,9 @@ function generateFallbackPredictions(formData) {
 
   const depPct = toPct(phqScore, 27);
   const anxPct = toPct(gadScore, 21);
-  const strPct = Math.min(100, 30 + Math.floor(Math.random() * 30));
+  // Deterministic stress score based on tension and irritability items
+  const strScore = (parseInt(formData.gad_irritable) || 0) + (parseInt(formData.gad_restless) || 0) + (parseInt(formData.gad_relax) || 0) + (parseInt(formData.phq_tired) || 0);
+  const strPct = toPct(strScore, 12);
 
   // Compute sleep ISI score out of 28
   let realSleepScore = 0;
@@ -127,6 +153,9 @@ function generateFallbackPredictions(formData) {
   ];
 
   return {
+    scoringMode: 'clinical_fallback',
+    crisis_flag: crisis.alert,
+    crisis_guidance: crisis,
     overallScore: overall,
     depression: dep,
     anxiety: anx,

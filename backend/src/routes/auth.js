@@ -6,7 +6,7 @@ const User = require('../models/User');
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
     }
@@ -14,7 +14,8 @@ router.post('/register', async (req, res) => {
     if (exists) return res.status(409).json({ message: 'An account with this email already exists' });
 
     const hashed = await bcrypt.hash(password, 12);
-    const user = await User.create({ name, email, password: hashed, role: role || 'user' });
+    // Enforce role: 'user' on the server to prevent unauthorized clinician creation
+    const user = await User.create({ name, email, password: hashed, role: 'user' });
     res.status(201).json({ message: 'Account created successfully', userId: user._id });
   } catch (err) {
     res.status(500).json({ message: 'Server error during registration' });

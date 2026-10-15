@@ -42,9 +42,8 @@ Many people wonder: *"Why not deploy the Python ML model directly on Render or V
 Here is the simple reason:
 1. **The Size of the AI**: Your ML service uses **PyTorch**, **Transformers**, and a **267 MB DistilBERT deep learning model** (`model.safetensors`).
 2. **Memory Limit**: To run these models, your computer needs **1.5 GB to 2 GB of RAM**.
-3. **Free Cloud Limits**:
-   - **Render Free Tier**: Only gives **512 MB of RAM**. As soon as the model tries to load, Render crashes with an **Out Of Memory (Killed)** error.
-   - **Vercel**: Only allows short functions under 250 MB and 10-second limits.
+   - **Render Free Tier**: Only provides **512 MB of RAM**. As soon as PyTorch and DistilBERT load, Render hits memory limits and crashes with an **Out Of Memory (Killed)** error.
+   - **Vercel**: Designed for ephemeral stateless API routes and web frontends, where heavy deep learning frameworks (PyTorch, transformers) exceed practical package bundle limits and encounter severe cold-start latencies.
 4. **The Free Solution**:
    - Your PC already has plenty of RAM and power.
    - By running the heavy Python model on your PC and using **Cloudflare Tunnel**, Cloudflare gives your local model a **secure, public HTTPS link** (`https://xxx.trycloudflare.com`).

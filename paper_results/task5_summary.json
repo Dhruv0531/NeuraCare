@@ -1,0 +1,37 @@
+{
+  "split_sizes": {
+    "train": 43410,
+    "validation": 5426,
+    "test": 5427
+  },
+  "missing_names_in_config": true,
+  "metrics_threshold_0_5": {
+    "micro_f1": 0.58,
+    "macro_f1": 0.4195,
+    "weighted_f1": 0.5497,
+    "micro_precision": 0.7143,
+    "micro_recall": 0.4882,
+    "exact_match_accuracy": 0.4627
+  },
+  "threshold_optimization": {
+    "validation_grid": {
+      "0.15": 0.5769,
+      "0.2": 0.5961,
+      "0.25": 0.6037,
+      "0.3": 0.6045,
+      "0.35": 0.6004,
+      "0.4": 0.5958,
+      "0.45": 0.5873,
+      "0.5": 0.5736,
+      "0.55": 0.556,
+      "0.6": 0.5374
+    },
+    "best_threshold_on_val": 0.3,
+    "best_val_micro_f1": 0.6045,
+    "test_metrics_at_best_threshold": {
+      "micro_f1": 0.6073,
+      "macro_f1": 0.4651,
+      "weighted_f1": 0.5922
+    }
+  }
+}

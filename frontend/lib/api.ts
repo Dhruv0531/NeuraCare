@@ -260,6 +260,14 @@ export interface Assessment {
   };
   recommendations: string[];
   formData?: Record<string, unknown>;
+  scoringMode?: 'ml_multimodal' | 'clinical_fallback';
+  crisis_flag?: boolean;
+  crisis_guidance?: {
+    alert: boolean;
+    severity?: string;
+    message?: string;
+    resources?: { name: string; contact: string; web?: string }[];
+  };
 }
 
 export interface Patient {

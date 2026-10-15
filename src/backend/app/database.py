@@ -13,7 +13,6 @@ if "/" in MONGO_URL.replace("://", ""):
 try:
     client = MongoClient(
         MONGO_URL,
-        tlsAllowInvalidCertificates=True,
         serverSelectionTimeoutMS=5000
     )
     db = client[db_name]
