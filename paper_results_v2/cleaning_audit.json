@@ -1,0 +1,29 @@
+{
+  "raw_rows": 39775,
+  "removed_low_sd": 935,
+  "shifted_1_4_to_0_3": true,
+  "removed_out_of_range": 0,
+  "missing_before_impute": 0,
+  "duplicates_removed": 0,
+  "cleaned_rows": 38840,
+  "depression_class_counts": {
+    "Low": 12058,
+    "Moderate": 7044,
+    "High": 19738
+  },
+  "split_sizes": [
+    27188,
+    5826,
+    5826
+  ],
+  "anxiety_class_counts": {
+    "Low": 11925,
+    "Moderate": 7002,
+    "High": 19913
+  },
+  "stress_class_counts": {
+    "Low": 16102,
+    "Moderate": 8730,
+    "High": 14008
+  }
+}

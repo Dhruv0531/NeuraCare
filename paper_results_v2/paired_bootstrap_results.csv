@@ -1,0 +1,16 @@
+target,model_a,model_b,n,acc_diff_pp,ci_low_pp,ci_high_pp
+depression,logreg,xgb_smote,5826,2.27,1.17,3.42
+depression,xgb_no_resampling,xgb_smote,5826,3.28,2.37,4.14
+depression,xgb_smotenc,xgb_smote,5826,1.99,1.05,2.87
+depression,xgb_no_resampling,logreg,5826,1.01,0.29,1.75
+depression,xgb_no_sensitive,xgb_no_resampling,5826,-0.7,-1.25,-0.14
+anxiety,logreg,xgb_smote,5826,1.94,0.89,2.95
+anxiety,xgb_no_resampling,xgb_smote,5826,2.2,1.3,3.07
+anxiety,xgb_smotenc,xgb_smote,5826,1.79,0.86,2.63
+anxiety,xgb_no_resampling,logreg,5826,0.26,-0.46,0.98
+anxiety,xgb_no_sensitive,xgb_no_resampling,5826,-0.45,-1.06,0.1
+stress,logreg,xgb_smote,5826,1.72,0.7,2.8
+stress,xgb_no_resampling,xgb_smote,5826,2.39,1.51,3.24
+stress,xgb_smotenc,xgb_smote,5826,1.87,1.01,2.78
+stress,xgb_no_resampling,logreg,5826,0.67,-0.12,1.42
+stress,xgb_no_sensitive,xgb_no_resampling,5826,0.05,-0.53,0.64
