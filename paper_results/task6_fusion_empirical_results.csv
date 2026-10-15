@@ -1,0 +1,10 @@
+text_condition,isi_score,dep_mean_delta_p_high,dep_pct_label_changed,anx_mean_delta_p_high,anx_pct_label_changed,str_mean_delta_p_high,str_pct_label_changed,prob_sum_min,prob_sum_max,prob_sum_mean
+neutral,0,-0.0054,1.2,-0.0047,1.6,-0.0064,1.6,0.9999,1.0001,1.00001
+neutral,14,0.0112,1.4,0.009,1.6,0.0118,2.6,0.9999,1.0001,1.00001
+neutral,28,0.0378,1.8,0.0319,2.4,0.0397,3.0,0.9999,1.0001,1.00001
+strongly_distressed,0,0.0148,1.4,0.0446,2.4,-0.0064,1.6,0.9999,1.0001,1.00001
+strongly_distressed,14,0.0413,1.8,0.0664,2.6,0.0118,2.6,0.9999,1.0001,1.0
+strongly_distressed,28,0.0667,2.2,0.0876,3.2,0.0397,3.0,0.9999,1.0001,1.0
+strongly_positive,0,-0.046,0.0,-0.0469,0.2,-0.0449,0.0,0.9999,1.0001,0.99999
+strongly_positive,14,-0.0296,0.6,-0.0322,0.4,-0.0262,1.0,0.9999,1.0001,0.99999
+strongly_positive,28,-0.012,1.0,-0.0168,1.4,-0.0063,1.6,0.9999,1.0001,1.0

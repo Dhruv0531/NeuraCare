@@ -23,6 +23,9 @@ emotion_model/*.bin
 emotion_model/*.h5
 emotion_model/*.pth
 
+# Large Datasets
+data.csv
+
 # Python Cache & Virtual Environments
 __pycache__/
 */__pycache__/

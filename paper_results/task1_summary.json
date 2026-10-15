@@ -1,0 +1,53 @@
+{
+  "rows_loaded": 39775,
+  "rows_removed_step2_low_std": 935,
+  "rows_removed_step4_invalid_range": 0,
+  "rows_removed_step6_duplicates": 0,
+  "final_rows": 38840,
+  "answer_range_before_shift": {
+    "min": 1.0,
+    "max": 4.0
+  },
+  "answer_range_after_shift": {
+    "min": 0.0,
+    "max": 3.0
+  },
+  "missing_values_before_imputation": {
+    "q_items_total": 0,
+    "demographics_total": 0,
+    "demographics_by_col": {
+      "age": 0,
+      "gender": 0,
+      "education": 0,
+      "urban": 0,
+      "religion": 0,
+      "orientation": 0,
+      "race": 0,
+      "married": 0,
+      "familysize": 0
+    }
+  },
+  "subscales": {
+    "Depression": {
+      "min": 0.0,
+      "max": 42.0,
+      "mean": 21.2082,
+      "median": 21.0,
+      "std": 12.0793
+    },
+    "Anxiety": {
+      "min": 0.0,
+      "max": 42.0,
+      "mean": 16.0853,
+      "median": 15.0,
+      "std": 9.9538
+    },
+    "Stress": {
+      "min": 0.0,
+      "max": 42.0,
+      "mean": 21.297,
+      "median": 21.0,
+      "std": 10.2029
+    }
+  }
+}

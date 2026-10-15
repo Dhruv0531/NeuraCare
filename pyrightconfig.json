@@ -1,0 +1,15 @@
+{
+  "include": [
+    ".",
+    "paper_results",
+    "src/backend"
+  ],
+  "venvPath": "src/backend",
+  "venv": ".venv",
+  "extraPaths": [
+    "src/backend",
+    "src/backend/.venv/Lib/site-packages",
+    "."
+  ],
+  "typeCheckingMode": "off"
+}
