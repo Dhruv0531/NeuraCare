@@ -39,6 +39,14 @@ env/
 ENV/
 .pytest_cache/
 
+# Windows system files
+desktop.ini
+**/desktop.ini
+
+# Local Git metadata backup
+.git-backup/
+desktop.ini.git-backup
+
 # System & OS Files
 .DS_Store
 Thumbs.db
