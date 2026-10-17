@@ -157,7 +157,7 @@ export default function ResultsPage() {
             {assessment.scoringMode === 'ml_multimodal' ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                AI Multimodal Engine (XGBoost + DistilBERT + ISI)
+                AI Multimodal Clinical Engine
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
@@ -175,7 +175,7 @@ export default function ResultsPage() {
           </div>
           <p className="text-sm text-text-muted max-w-lg mx-auto">
             {assessment.scoringMode === 'ml_multimodal'
-              ? 'Computed using our trained XGBoost psychometric models, GoEmotions NLP text analysis, and ISI sleep metrics.'
+              ? 'Synthesized using multimodal clinical psychometric analysis, affective language indicators, and sleep indices.'
               : 'Computed using standardized psychometric clinical cutoff guidelines (PHQ-9, GAD-7, and ISI sleep index).'}
           </p>
 

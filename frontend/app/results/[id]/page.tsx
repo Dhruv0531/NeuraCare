@@ -89,7 +89,7 @@ export default function ResultDetailPage() {
             {assessment.scoringMode === 'ml_multimodal' ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                AI Multimodal Engine (XGBoost + DistilBERT + ISI)
+                AI Multimodal Clinical Engine
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
