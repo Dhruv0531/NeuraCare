@@ -160,9 +160,14 @@ class MLService:
             values = sv.values
             # If 3D array (samples, features, classes), extract class 1 & 2 (Moderate & High risk contribution)
             if len(values.shape) == 3:
-                # Class 2 (High Risk) or Class 1 (Moderate Risk) contribution
-                risk_class = pred_class if pred_class > 0 else 2
-                class_shap = values[0, :, risk_class]
+                # Use SHAP values for the predicted class if elevated (Moderate/High)
+                # For Low predictions, combine Moderate + High contributions to show
+                # which symptoms could push toward clinical thresholds
+                if pred_class > 0:
+                    class_shap = values[0, :, pred_class]
+                else:
+                    # Average of Moderate and High class SHAP values shows overall risk direction
+                    class_shap = (values[0, :, 1] + values[0, :, 2]) / 2.0
             else:
                 class_shap = values[0, :]
 

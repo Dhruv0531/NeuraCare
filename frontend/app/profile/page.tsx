@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Shield, Calendar, ClipboardList, LogOut, Trash2, Eye, EyeOff, Save, X } from 'lucide-react';
+import { User, Mail, Shield, Calendar, ClipboardList, LogOut, Trash2, Eye, EyeOff, Save, X, Stethoscope } from 'lucide-react';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -22,6 +23,23 @@ export default function ProfilePage() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const [doctorCode, setDoctorCode] = useState('');
+  const [linkLoading, setLinkLoading] = useState(false);
+
+  const handleLinkDoctor = async () => {
+    if (!doctorCode.trim()) return;
+    setLinkLoading(true);
+    try {
+      const res = await api.linkClinician(doctorCode.trim());
+      toast.success(res.message || 'Connected with provider!');
+      setDoctorCode('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to connect. Please verify the code.');
+    } finally {
+      setLinkLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.push('/login');
@@ -164,6 +182,60 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Clinical Linkage Card */}
+        {user.role === 'clinician' ? (
+          <div className="bg-gradient-to-br from-secondary/10 via-secondary/5 to-transparent rounded-3xl border border-secondary/25 shadow-card p-8 space-y-4">
+            <div className="flex items-center gap-2 text-secondary">
+              <Stethoscope className="h-5 w-5" />
+              <h2 className="text-xl font-bold text-text-main">Clinician Suite & Patient Connect Code</h2>
+            </div>
+            <p className="text-sm text-text-muted leading-relaxed">
+              Patients can connect their private assessment records and crisis alerts to your portal using your unique code:
+            </p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-secondary/20 shadow-sm">
+              <div>
+                <span className="text-[10px] text-text-muted uppercase tracking-wider font-bold block mb-1">Your Patient Connect Code</span>
+                <span className="font-mono text-xl font-extrabold text-secondary tracking-widest">
+                  {(user as any).clinicianCode || 'DR-ACTIVE'}
+                </span>
+              </div>
+              <Link
+                href="/clinician"
+                className="bg-secondary hover:bg-secondary/90 text-white text-xs font-semibold px-5 py-3 rounded-xl transition-all shadow-sm"
+              >
+                Open Clinician Portal
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl border border-border shadow-card p-8 space-y-4">
+            <div className="flex items-center gap-2 text-primary">
+              <Stethoscope className="h-5 w-5" />
+              <h2 className="text-xl font-bold text-text-main">Connected Healthcare Provider</h2>
+            </div>
+            <p className="text-sm text-text-muted leading-relaxed">
+              If your therapist, clinical psychologist, or counselor uses NeuraCare, enter their referral connect code below to securely share your assessments and safety alerts with them.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+              <input
+                type="text"
+                value={doctorCode}
+                onChange={e => setDoctorCode(e.target.value.toUpperCase())}
+                placeholder="e.g. DR-SHARMA-409"
+                className="px-4 py-3 rounded-xl border border-border text-sm font-mono tracking-wider uppercase bg-background focus:bg-white focus:border-primary outline-none flex-1"
+              />
+              <button
+                onClick={handleLinkDoctor}
+                disabled={linkLoading || !doctorCode.trim()}
+                className="bg-primary hover:bg-primary-dark disabled:opacity-60 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-all"
+              >
+                {linkLoading ? 'Connecting...' : 'Connect Provider'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Change Password */}
         <div className="bg-card rounded-3xl border border-border shadow-card p-8">

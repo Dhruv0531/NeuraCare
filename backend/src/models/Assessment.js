@@ -23,6 +23,7 @@ const shapFeatureSchema = new mongoose.Schema({
 
 const assessmentSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
+  clinicianId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, index: true },
   overallScore: { type: Number },
   scoringMode: { type: String, enum: ['ml_multimodal', 'clinical_fallback'], default: 'clinical_fallback' },
   crisis_flag: { type: Boolean, default: false },

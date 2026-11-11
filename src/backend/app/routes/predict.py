@@ -7,6 +7,7 @@ from app.services.ml_service import ml_service
 from app.services.sleep_service import calculate_sleep_score
 from app.services.emotion_service import emotion_service
 from app.services.llm_recommendations import generate_ai_recommendations
+from app.services.adaptive_service import adaptive_engine
 from app.database import collection
 
 router = APIRouter()
@@ -120,3 +121,35 @@ def analyze_text(request: TextAnalysisRequest):
         "emotions": res.get("emotions", []),
         "message": res.get("message")
     }
+
+class AdaptiveQuestionRequest(BaseModel):
+    answers: Dict[str, Any] = {}
+    history: List[str] = []
+
+class SectionAdaptiveRequest(BaseModel):
+    section: str = "phq9"
+    answers: Dict[str, Any] = {}
+    phq_context: Optional[Dict[str, Any]] = None
+
+@router.post("/adaptive/section-followups")
+def get_section_followups(payload: SectionAdaptiveRequest):
+    """
+    Section-Level Stepped Adaptive Screening Endpoint.
+    Analyzes full 9-item PHQ or 7-item GAD answers to generate personalized follow-up probes.
+    """
+    if payload.section.lower() == "phq9":
+        return adaptive_engine.analyze_phq9_and_generate_followups(payload.answers)
+    elif payload.section.lower() == "gad7":
+        return adaptive_engine.analyze_gad7_and_generate_followups(payload.answers, payload.phq_context)
+    else:
+        return {"error": f"Unknown section '{payload.section}'", "followup_questions": []}
+
+@router.post("/adaptive/next-question")
+def get_adaptive_next_question(payload: AdaptiveQuestionRequest):
+    """
+    Dynamic question endpoint.
+    """
+    if hasattr(adaptive_engine, "select_next_question"):
+        return adaptive_engine.select_next_question(payload.answers, payload.history)
+    return {"is_final": True, "message": "Stepped assessment active"}
+

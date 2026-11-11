@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { RotateCcw, HelpCircle, Sparkles, Moon, Lightbulb, CheckCircle2, BarChart2 } from 'lucide-react';
+import { RotateCcw, HelpCircle, Sparkles, Moon, Lightbulb, CheckCircle2, BarChart2, Brain } from 'lucide-react';
 import Disclaimer from '@/components/Disclaimer';
 import RiskBadge from '@/components/RiskBadge';
 import RadarChartComponent from '@/components/RadarChartComponent';
@@ -212,6 +212,50 @@ export default function ResultsPage() {
             })}
           </div>
         </div>
+
+        {/* Adaptive Stepped Clinical Insights (if available) */}
+        {((assessment.formData as any)?.adaptive_insights || (assessment as any)?.adaptive_insights) && (
+          <div className="bg-white rounded-3xl border border-border shadow-card p-6 sm:p-8 space-y-4">
+            <div className="flex items-center gap-2 text-primary">
+              <Brain className="h-5 w-5" />
+              <h2 className="text-xl font-bold text-text-main">AI Stepped Adaptive Assessment Insights</h2>
+            </div>
+            <p className="text-sm text-text-muted">
+              Personalized symptom patterns identified dynamically during your stepped clinical screening:
+            </p>
+            <div className="grid md:grid-cols-2 gap-4 pt-1">
+              {/* PHQ-9 Cluster Insight */}
+              {((assessment.formData as any)?.adaptive_insights?.phq_analysis || (assessment as any)?.adaptive_insights?.phq_analysis) && (
+                <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs uppercase font-bold tracking-wider text-primary">Depression Pattern</span>
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/15 text-primary">
+                      {((assessment.formData as any)?.adaptive_insights?.phq_analysis?.dominant_cluster || (assessment as any)?.adaptive_insights?.phq_analysis?.dominant_cluster)}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-text-main leading-relaxed">
+                    {((assessment.formData as any)?.adaptive_insights?.phq_analysis?.ai_clinical_observation || (assessment as any)?.adaptive_insights?.phq_analysis?.ai_clinical_observation)}
+                  </p>
+                </div>
+              )}
+
+              {/* GAD-7 Cluster Insight */}
+              {((assessment.formData as any)?.adaptive_insights?.gad_analysis || (assessment as any)?.adaptive_insights?.gad_analysis) && (
+                <div className="bg-secondary/5 border border-secondary/20 rounded-2xl p-5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs uppercase font-bold tracking-wider text-secondary">Anxiety Pattern</span>
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-secondary/15 text-secondary">
+                      {((assessment.formData as any)?.adaptive_insights?.gad_analysis?.dominant_cluster || (assessment as any)?.adaptive_insights?.gad_analysis?.dominant_cluster)}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-text-main leading-relaxed">
+                    {((assessment.formData as any)?.adaptive_insights?.gad_analysis?.ai_clinical_observation || (assessment as any)?.adaptive_insights?.gad_analysis?.ai_clinical_observation)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Interactive Radar Chart Representation */}
         <div className="bg-white rounded-3xl border border-border shadow-card p-6 sm:p-8 space-y-4">

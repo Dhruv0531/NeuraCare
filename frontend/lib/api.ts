@@ -38,8 +38,16 @@ async function request<T>(
 
 // ── Auth & Endpoints ──────────────────────────────────────────────────
 export const api = {
-  register: (body: { name: string; email: string; password: string; role: string }) =>
-    request('/api/auth/register', { method: 'POST', body: JSON.stringify(body) }),
+  register: (body: {
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+    licenseNumber?: string;
+    specialty?: string;
+    affiliation?: string;
+    referralCode?: string;
+  }) => request('/api/auth/register', { method: 'POST', body: JSON.stringify(body) }),
 
   login: (body: { email: string; password: string }) =>
     request<{ token: string; user: { id: string; name: string; email: string; role: string } }>(
@@ -92,6 +100,48 @@ export const api = {
         } as Assessment;
       } catch (fastApiErr) {
         throw new Error('Backend connection failed. Please ensure FastAPI (port 8000) or Express (port 5000) is running.');
+      }
+    }
+  },
+
+  getSectionFollowups: async (
+    section: 'phq9' | 'gad7',
+    answers: Record<string, unknown>,
+    phqContext?: unknown
+  ): Promise<SectionAdaptiveAnalysis> => {
+    try {
+      return await request<SectionAdaptiveAnalysis>('/api/assessment/adaptive-section', {
+        method: 'POST',
+        body: JSON.stringify({ section, answers, phq_context: phqContext }),
+      });
+    } catch (expressErr) {
+      console.warn('Express adaptive-section unreachable, trying FastAPI...', expressErr);
+      try {
+        const res = await fetch('http://127.0.0.1:8000/adaptive/section-followups', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ section, answers, phq_context: phqContext }),
+        });
+        if (!res.ok) throw new Error('FastAPI error');
+        return await res.json();
+      } catch (fastApiErr) {
+        console.error('All backends failed for adaptive section follow-ups', fastApiErr);
+        return {
+          section,
+          total_score: 0,
+          max_score: section === 'phq9' ? 27 : 21,
+          severity: 'Moderate',
+          dominant_cluster: section === 'phq9' ? 'General Emotional Equilibrium' : 'Generalized Tension',
+          ai_clinical_observation: 'Follow-up exploration based on your assessment responses.',
+          followup_questions: [
+            {
+              id: `${section}_adaptive_fup_1`,
+              text: 'How significantly do these symptoms interfere with your daily concentration, work, or relationships?',
+              target_symptom: 'Daily functional impairment',
+              scale: ['Not at all', 'Slightly / Several days', 'Moderately / More than half the days', 'Extremely / Nearly every day'],
+            },
+          ],
+        };
       }
     }
   },
@@ -174,6 +224,12 @@ export const api = {
   getCohort: () =>
     request<Patient[]>('/api/clinician/cohort'),
 
+  getClinicianPatients: () =>
+    request<ClinicianPatient[]>('/api/clinician/patients'),
+
+  getClinicianPatientDetail: (id: string) =>
+    request<{ patient: any; assessmentCount: number; history: Assessment[] }>(`/api/clinician/patient/${id}`),
+
   getClinicianSummary: async (): Promise<ClinicianSummary> => {
     try {
       return await request<ClinicianSummary>('/api/clinician/summary');
@@ -194,6 +250,12 @@ export const api = {
   },
 
   // ── User ────────────────────────────────────────────────────────────
+  linkClinician: (clinicianCode: string) =>
+    request<{ message: string; clinician: any }>('/api/user/link-clinician', {
+      method: 'POST',
+      body: JSON.stringify({ clinicianCode }),
+    }),
+
   updateProfile: (body: { name: string }) =>
     request('/api/user/profile', { method: 'PUT', body: JSON.stringify(body) }),
 
@@ -205,8 +267,27 @@ export const api = {
 };
 
 // ── Types ─────────────────────────────────────────────────────────────
+export interface AdaptiveFollowupQuestion {
+  id: string;
+  text: string;
+  target_symptom: string;
+  scale: string[];
+}
+
+export interface SectionAdaptiveAnalysis {
+  section: string;
+  total_score: number;
+  max_score: number;
+  severity: string;
+  dominant_cluster: string;
+  ai_clinical_observation: string;
+  crisis_flag?: boolean;
+  followup_questions: AdaptiveFollowupQuestion[];
+}
+
 export interface RiskResult {
   label: 'Low' | 'Moderate' | 'High';
+  level?: string;
   score: number;
   probabilities: { low: number; moderate: number; high: number };
   shap_explanation?: ShapExplanation[];
@@ -283,14 +364,53 @@ export interface Patient {
   top_emotions?: string[];
 }
 
+export interface ClinicianProfile {
+  id: string;
+  name: string;
+  email: string;
+  specialty: string;
+  affiliation: string;
+  licenseNumber: string;
+  clinicianCode: string;
+}
+
+export interface ClinicianPatient {
+  _id: string;
+  patientId: string;
+  name: string;
+  email: string;
+  joinedAt: string;
+  assessmentCount: number;
+  lastAssessmentDate: string | null;
+  overallRisk: 'Low' | 'Moderate' | 'High';
+  isCrisis: boolean;
+  latestAssessment?: {
+    _id: string;
+    overallScore: number;
+    depression?: RiskResult;
+    anxiety?: RiskResult;
+    stress?: RiskResult;
+    sleep?: SleepData;
+    crisis_flag?: boolean;
+    adaptive_insights?: any;
+    top_emotions?: EmotionItem[];
+  } | null;
+}
+
 export interface ClinicianSummary {
+  clinician?: ClinicianProfile;
   total_patients: number;
+  total_assessments?: number;
   high_risk_cases: number;
+  crisis_cases?: number;
   risk_distribution: { Low: number; Moderate: number; High: number };
   recent_activity: {
+    _id?: string;
     patient_id: string;
+    patient_name?: string;
     created_at: string;
     overall_risk: string;
+    crisis_flag?: boolean;
     depression_level: string;
     anxiety_level: string;
     stress_level: string;
