@@ -130,11 +130,20 @@ class MLService:
             for scale in ["depression", "anxiety", "stress"]:
                 m_path = os.path.join(MODELS_DIR, f"model_{scale}.pkl")
                 if os.path.exists(m_path):
-                    with open(m_path, "rb") as f:
-                        model = pickle.load(f)
+                    try:
+                        with open(m_path, "rb") as f:
+                            model = pickle.load(f)
                         self.models[scale] = model
+                        print(f"Loaded ML model for {scale}")
+                    except Exception as me:
+                        print(f"Error loading model for {scale}: {me}")
+                        continue
+
+                    try:
                         self.explainers[scale] = shap.TreeExplainer(model)
-                    print(f"Loaded ML model for {scale}")
+                    except Exception as se:
+                        print(f"Notice: TreeExplainer initialization for {scale} deferred: {se}")
+                        self.explainers[scale] = None
                 else:
                     print(f"Warning: Model file not found at {m_path}")
         except Exception as e:
@@ -145,7 +154,7 @@ class MLService:
             return {"level": "Low", "score": 0, "probabilities": {"low": 1.0, "moderate": 0.0, "high": 0.0}, "shap_explanation": []}
 
         model = self.models[scale]
-        explainer = self.explainers[scale]
+        explainer = self.explainers.get(scale)
 
         df_feats = df[self.feature_names].astype(float)
 
@@ -155,46 +164,47 @@ class MLService:
         level_str = LEVEL_MAPPING.get(pred_class, "Low")
 
         shap_explanation = []
-        try:
-            sv = explainer(df_feats)
-            values = sv.values
-            # If 3D array (samples, features, classes), extract class 1 & 2 (Moderate & High risk contribution)
-            if len(values.shape) == 3:
-                # Use SHAP values for the predicted class if elevated (Moderate/High)
-                # For Low predictions, combine Moderate + High contributions to show
-                # which symptoms could push toward clinical thresholds
-                if pred_class > 0:
-                    class_shap = values[0, :, pred_class]
+        if explainer is not None:
+            try:
+                sv = explainer(df_feats)
+                values = sv.values
+                # If 3D array (samples, features, classes), extract class 1 & 2 (Moderate & High risk contribution)
+                if len(values.shape) == 3:
+                    # Use SHAP values for the predicted class if elevated (Moderate/High)
+                    # For Low predictions, combine Moderate + High contributions to show
+                    # which symptoms could push toward clinical thresholds
+                    if pred_class > 0:
+                        class_shap = values[0, :, pred_class]
+                    else:
+                        # Average of Moderate and High class SHAP values shows overall risk direction
+                        class_shap = (values[0, :, 1] + values[0, :, 2]) / 2.0
                 else:
-                    # Average of Moderate and High class SHAP values shows overall risk direction
-                    class_shap = (values[0, :, 1] + values[0, :, 2]) / 2.0
-            else:
-                class_shap = values[0, :]
+                    class_shap = values[0, :]
 
-            feature_impacts = []
-            for idx, f_name in enumerate(self.feature_names):
-                val = float(df_feats.iloc[0][f_name])
-                raw_impact = float(class_shap[idx])
-                
-                # If value is 0 and impact is positive, the absent symptom shouldn't drive risk up
-                # But preserve negative (protective) SHAP values — absence actively reducing risk is valid
-                if val == 0 and raw_impact > 0:
-                    adjusted_impact = 0.0
-                else:
-                    adjusted_impact = round(raw_impact, 4)
+                feature_impacts = []
+                for idx, f_name in enumerate(self.feature_names):
+                    val = float(df_feats.iloc[0][f_name])
+                    raw_impact = float(class_shap[idx])
+                    
+                    # If value is 0 and impact is positive, the absent symptom shouldn't drive risk up
+                    # But preserve negative (protective) SHAP values — absence actively reducing risk is valid
+                    if val == 0 and raw_impact > 0:
+                        adjusted_impact = 0.0
+                    else:
+                        adjusted_impact = round(raw_impact, 4)
 
-                feature_impacts.append({
-                    "feature": f_name,
-                    "description": DASS_ITEM_DESCRIPTIONS.get(f_name, f_name),
-                    "value": val,
-                    "impact": adjusted_impact
-                })
+                    feature_impacts.append({
+                        "feature": f_name,
+                        "description": DASS_ITEM_DESCRIPTIONS.get(f_name, f_name),
+                        "value": val,
+                        "impact": adjusted_impact
+                    })
 
-            # Sort by value > 0 first, then by impact magnitude
-            feature_impacts.sort(key=lambda x: (x["value"] > 0, abs(x["impact"])), reverse=True)
-            shap_explanation = feature_impacts[:5]
-        except Exception as e:
-            print(f"Error computing SHAP for {scale}: {e}")
+                # Sort by value > 0 first, then by impact magnitude
+                feature_impacts.sort(key=lambda x: (x["value"] > 0, abs(x["impact"])), reverse=True)
+                shap_explanation = feature_impacts[:5]
+            except Exception as e:
+                print(f"Error computing SHAP for {scale}: {e}")
 
         return {
             "level": level_str,

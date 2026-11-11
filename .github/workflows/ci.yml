@@ -35,7 +35,7 @@ jobs:
         env:
           PYTHONPATH: src/backend
         run: |
-          pytest src/backend/tests -v
+          python -m pytest src/backend/tests -v
 
   # ───────────────────────────────────────────────────────────────────────────
   # JOB 2: Express.js Backend API, RBAC & Security Test Suite
@@ -112,6 +112,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Install ML Runtime Requirements
         run: |
