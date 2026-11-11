@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Shield, Calendar, ClipboardList, LogOut, Trash2, Eye, EyeOff, Save, X, Stethoscope } from 'lucide-react';
+import { Mail, Shield, Calendar, ClipboardList, LogOut, Trash2, Eye, EyeOff, Save, X, Stethoscope } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';

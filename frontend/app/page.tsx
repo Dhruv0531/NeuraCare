@@ -4,7 +4,7 @@ import Link from 'next/link';
 import {
   Brain, Cpu, FileText, ClipboardList,
   Moon, Wind, Zap, ArrowRight, Shield, Users, Award,
-  AlertTriangle, Sparkles, HelpCircle, Activity,
+  AlertTriangle, Sparkles, Activity,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 

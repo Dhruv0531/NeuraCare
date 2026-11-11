@@ -1,36 +1,125 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧠 NeuraCare Frontend Application
 
-## Getting Started
+The modern, responsive web application for NeuraCare, built with **Next.js 14** (App Router), **TypeScript**, and **Tailwind CSS**. It provides an accessible, clinical-grade interface for individual patient screening and a specialized portal for licensed mental health clinicians.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🚀 Key Features
+
+1. **6-Stage Stepped Adaptive Screening Wizard (`/assessment`)**:
+   - Standard clinical screening across **PHQ-9** (Depression) and **GAD-7** (Anxiety).
+   - Real-time symptom cluster identification (Somatic Fatigue, Cognitive Self-Criticism, Anhedonia, Rumination, Somatic Tension, Panic Apprehension).
+   - Dynamic, contextual follow-up inquiries generated via OpenRouter LLM or deterministic fallback templates.
+   - Comprehensive **Insomnia Severity Index (ISI)** somatic sleep assessment (7 clinical items).
+   - Free-text emotional reflection journal evaluated via DistilBERT NLP.
+2. **Clinical Results & Explainability (`/results`)**:
+   - Immediate deterministic Crisis Intervention Banner (988, Tele-MANAS, Crisis Text Line).
+   - AI Stepped Adaptive Insights card revealing identified symptom clusters and follow-up responses.
+   - Composite Wellness score dial (0–100) with color-coded risk bands.
+   - Dimensional probability cards (Depression, Anxiety, Stress, Insomnia).
+   - Multi-axial radar chart and horizontal SHAP factor contribution chart.
+   - 1-Click printable clinical PDF report export using `jsPDF` and `html2canvas`.
+3. **Clinician Portal with Strict RBAC & Triage (`/clinician`)**:
+   - Access restricted to verified healthcare providers (`role: 'clinician'`).
+   - Shareable **Clinician Connect Code** widget with one-click clipboard copy (e.g. `DR-SARAH-782`).
+   - Prioritized triage roster: crisis-flagged patients pinned to top, followed by high-risk cases.
+   - Interactive clinical chart modal displaying full patient timelines, radar charts, and SHAP factor drilldowns.
+4. **Dual Role Registration & Linkage (`/register` & `/profile`)**:
+   - Segmented onboarding toggle: **Individual / Patient** vs. **Licensed Clinician**.
+   - Clinician registration collects state/board license number, specialty, and hospital/clinic affiliation.
+   - Individual patients can link to their doctor during signup or update their connected provider on `/profile`.
+5. **Longitudinal Wellness Tracking (`/history`)**:
+   - Recharts-powered interactive timeline tracking depression, anxiety, and stress progression across assessments.
+
+---
+
+## 🛠️ Technology Stack
+
+- **Framework**: Next.js 14.2 (App Router with SSR & Static Optimization)
+- **Language**: TypeScript (Strict Mode)
+- **Styling**: Tailwind CSS + PostCSS + CSS Modules
+- **Icons**: Lucide React
+- **Animations**: Framer Motion
+- **Data Visualization**: Recharts (Radar, Area, Bar, Line charts)
+- **Document Export**: jsPDF + html2canvas
+- **Notifications**: React Hot Toast
+
+---
+
+## 📁 Directory Structure
+
+```
+frontend/
+├── app/
+│   ├── layout.tsx                 # Root layout, font loader, AuthProvider wrapper
+│   ├── page.tsx                   # Landing page with hero CTA and feature breakdown
+│   ├── globals.css                # Global styles and Tailwind utility classes
+│   ├── assessment/
+│   │   └── page.tsx               # 6-Stage Stepped Adaptive Screening Wizard
+│   ├── results/
+│   │   ├── page.tsx               # Multimodal results, SHAP explorer, adaptive card
+│   │   └── [id]/
+│   │       └── page.tsx           # Historical evaluation detail view
+│   ├── clinician/
+│   │   └── page.tsx               # Clinician triage dashboard & patient chart modal
+│   ├── history/
+│   │   └── page.tsx               # Longitudinal patient tracking chart
+│   ├── login/
+│   │   └── page.tsx               # Authentication sign-in form
+│   ├── register/
+│   │   └── page.tsx               # Dual registration form (Individual vs Clinician)
+│   └── profile/
+│       └── page.tsx               # Account profile & Connected Healthcare Provider card
+├── components/
+│   ├── Navbar.tsx                 # Responsive navigation bar with role badges
+│   ├── LongitudinalTrendChart.tsx # Historical timeline chart
+│   ├── ShapImpactChart.tsx        # Horizontal SHAP factor contribution bar chart
+│   ├── ClinicalReportExport.tsx   # PDF report generator
+│   └── ProtectedRoute.tsx         # Route guard redirecting unauthenticated users
+├── contexts/
+│   └── AuthContext.tsx            # Global auth state, JWT token storage, user roles
+└── lib/
+    └── api.ts                     # Centralized API fetch client with TypeScript types
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ⚙️ Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a `.env.local` file in the `frontend` root directory:
 
-## Learn More
+```env
+# URL of your Express.js backend API
+NEXT_PUBLIC_API_URL=http://localhost:5000
+```
 
-To learn more about Next.js, take a look at the following resources:
+In production (e.g. on Vercel), set `NEXT_PUBLIC_API_URL` to your live backend domain:
+```env
+NEXT_PUBLIC_API_URL=https://neuracare-backend.onrender.com
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🏃 Running Locally
 
-## Deploy on Vercel
+### 1. Install Dependencies
+```bash
+npm install
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 2. Start the Development Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 3. Production Build
+```bash
+npm run build
+npm run start
+```
+
+---
+
+## 🔒 Security & Medical Notice
+The NeuraCare frontend is an assistive psychological screening tool and does not provide formal psychiatric diagnoses or emergency medical treatment. Critical emergency triage guidance is hardcoded to ensure immediate access to crisis hotlines (988 / Tele-MANAS) without external network dependencies.

@@ -9,14 +9,11 @@ import {
   Send,
   Sparkles,
   Brain,
-  Shield,
-  Activity,
-  CheckCircle2,
-  Clock
+  Activity
 } from 'lucide-react';
 import StepProgress from '@/components/StepProgress';
 import Disclaimer from '@/components/Disclaimer';
-import { api, SectionAdaptiveAnalysis, AdaptiveFollowupQuestion } from '@/lib/api';
+import { api, SectionAdaptiveAnalysis } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 // ─── Standard Clinical Instruments ──────────────────────────────────────────
@@ -399,9 +396,7 @@ export default function AssessmentPage() {
                     <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/15 text-primary">
                       {phqAnalysis.dominant_cluster}
                     </span>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                      Score: {phqAnalysis.total_score}/27 ({phqAnalysis.severity})
-                    </span>
+
                   </div>
                   <p className="text-sm text-text-main font-medium leading-relaxed">
                     {phqAnalysis.ai_clinical_observation}
@@ -479,9 +474,7 @@ export default function AssessmentPage() {
                     <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-secondary/15 text-secondary">
                       {gadAnalysis.dominant_cluster}
                     </span>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                      Score: {gadAnalysis.total_score}/21 ({gadAnalysis.severity})
-                    </span>
+
                   </div>
                   <p className="text-sm text-text-main font-medium leading-relaxed">
                     {gadAnalysis.ai_clinical_observation}

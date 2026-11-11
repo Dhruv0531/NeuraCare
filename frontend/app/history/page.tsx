@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Brain, Activity, Sparkles, Clock, ArrowRight } from 'lucide-react';
+import { Calendar, Sparkles, Clock, ArrowRight } from 'lucide-react';
 import RiskBadge from '@/components/RiskBadge';
 import LongitudinalTrendChart from '@/components/LongitudinalTrendChart';
 import ClinicalReportExport from '@/components/ClinicalReportExport';

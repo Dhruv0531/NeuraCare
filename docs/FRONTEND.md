@@ -1,12 +1,14 @@
 # NeuraCare Frontend Documentation
 
-This document describes the architecture, tech stack, page routing, UI components, and state management of the NeuraCare frontend web application.
+This document describes the architecture, tech stack, page routing, UI components, state management, and user workflows of the NeuraCare frontend web application.
 
 ---
 
 ## 1. High-Level Overview
 
-The frontend is a modern, responsive single-page/SSR web application built with **Next.js 14** (App Router) and **TypeScript**. It provides a healthcare-grade user interface designed for both patients (taking evaluations and reviewing personal trends) and clinicians (reviewing patient cohorts and exporting medical-grade reports).
+The frontend is a healthcare-grade, responsive single-page/SSR web application built with **Next.js 14** (App Router) and **TypeScript**. It provides tailored experiences for two distinct user roles:
+1. **Individual Patients**: Taking multi-stage stepped adaptive screenings, reviewing personalized explainable insights, tracking wellness history, and linking with their care provider.
+2. **Licensed Clinicians**: Managing an assigned patient panel via unique connect codes, triaging high-risk and crisis cases, and inspecting deep-dive clinical charts and SHAP factor contributions.
 
 ```
                       ┌────────────────────────────────────┐
@@ -18,9 +20,11 @@ The frontend is a modern, responsive single-page/SSR web application built with 
            ▼                            ▼                            ▼
 ┌───────────────────────┐    ┌───────────────────────┐    ┌───────────────────────┐
 │     Patient Portal    │    │   Clinician Portal    │    │ Visual Analytics & PDF│
-│ - Multi-step survey   │    │ - Patient risk roster │    │ - Recharts timelines  │
-│ - Text emotion note   │    │ - Cohort statistics   │    │ - SHAP impact bars    │
-│ - Wellness scorecards │    │ - Detailed breakdown  │    │ - jsPDF medical export│
+│ - 6-Stage Stepped     │    │ - Connect Code share  │    │ - Recharts timelines  │
+│   Adaptive Screening  │    │ - Triage patient list │    │ - SHAP impact bars    │
+│ - Emotional Journal   │    │ - Crisis alert banner │    │ - Multi-axial radar   │
+│ - Wellness scorecards │    │ - Patient chart modal │    │ - jsPDF medical export│
+│ - Provider connection │    │ - RBAC-guarded routes │    │ - Adaptive insights   │
 └───────────────────────┘    └───────────────────────┘    └───────────────────────┘
 ```
 
@@ -50,21 +54,21 @@ frontend/
 │   ├── page.tsx                   # Modern landing page with feature cards and CTA
 │   ├── globals.css                # Global CSS styles and Tailwind utility directives
 │   ├── assessment/
-│   │   └── page.tsx               # Multi-step clinical questionnaire (PHQ-9/GAD-7/DASS) + Journal
+│   │   └── page.tsx               # 6-Stage Stepped Adaptive Screening Wizard
 │   ├── results/
-│   │   ├── page.tsx               # Assessment results: scores, SHAP explanations, recommendations
+│   │   ├── page.tsx               # Assessment results: scores, SHAP explanations, recommendations, adaptive insights
 │   │   └── [id]/
 │   │       └── page.tsx           # Detail view for any specific historical assessment
 │   ├── history/
 │   │   └── page.tsx               # Patient longitudinal wellness trends over time
 │   ├── clinician/
-│   │   └── page.tsx               # Clinician cohort dashboard with risk sorting and filters
+│   │   └── page.tsx               # Clinician cohort dashboard with connect code, triage sorting, and patient chart modal
 │   ├── login/
 │   │   └── page.tsx               # User & Clinician sign-in form
 │   ├── register/
-│   │   └── page.tsx               # Account registration form
+│   │   └── page.tsx               # Dual registration form (Individual vs. Licensed Clinician)
 │   └── profile/
-│       └── page.tsx               # Account profile, demographic settings, and password update
+│       └── page.tsx               # Account profile, demographics, and Connected Healthcare Provider card
 ├── components/
 │   ├── Navbar.tsx                 # Responsive navigation bar with role badges and sign-out
 │   ├── LongitudinalTrendChart.tsx # Recharts-powered timeline of Depression/Anxiety/Stress over time
@@ -72,61 +76,137 @@ frontend/
 │   ├── ClinicalReportExport.tsx   # PDF generator creating printable clinical summaries
 │   └── ProtectedRoute.tsx         # Route guard redirecting unauthenticated users to /login
 ├── contexts/
-│   └── AuthContext.tsx            # Global React context for JWT session, user info, and logout
+│   └── AuthContext.tsx            # Global React context for JWT session, user info, roles, and logout
 └── lib/
-    └── api.ts                     # Centralized Axios/fetch client pointing to NEXT_PUBLIC_API_URL
+    └── api.ts                     # Centralized API fetch client with full TypeScript interfaces
 ```
 
 ---
 
-## 4. Key Application Pages
+## 4. Key Application Pages & Workflows
 
-### 1. Landing Page (`app/page.tsx`)
-- Hero section with direct "Take Evaluation" call-to-action.
-- Feature grid explaining the hybrid AI model, explainability, clinician portal, and privacy standards.
-- Quick preview of the evaluation flow.
+### 4.1 The 6-Stage Stepped Adaptive Screening Wizard (`app/assessment/page.tsx`)
 
-### 2. Multi-Step Assessment (`app/assessment/page.tsx`)
-- **Step 1: Clinical Screening (PHQ-9 & GAD-7)**: Standardized questions assessing mood, anhedonia, fatigue, feelings of inadequacy, nervousness, panic apprehension, and restlessness.
-- **Step 2: Sleep Assessment (ISI)**: All 7 clinical Insomnia Severity Index questions (5-point scale: None to Very Severe, 0–28 total).
-- **Step 3: Demographics (About You)**: Age group, gender, education, urban/rural residency, and background context.
-- **Step 4: Personal Reflection Journal**: Free-text prompt where users express their thoughts and feelings for DistilBERT emotion extraction.
-- **Progress Tracker**: Step-by-step indicator with validation to ensure no missing answers.
+Rather than presenting an intimidating static survey, NeuraCare utilizes a **Two-Stage Computerized Adaptive Testing (CAT)** workflow:
 
-### 3. Results & Explainability (`app/results/page.tsx`)
-- **Crisis Intervention Banner**: Deterministic, immediate safety banner displaying 24/7 crisis numbers (988, Tele-MANAS, Crisis Text Line) when critical distress or self-harm thoughts are reported.
-- **Evaluation Mode Indicator**: Transparently displays whether results were computed by the **AI Multimodal Engine** (XGBoost + DistilBERT + ISI) or the **Standard Clinical Scoring** fallback rule-engine.
-- **Composite Score Dial**: Overall score from 0–100 with color-coded risk bands.
-- **Dimensional Breakdown**: Depression, Anxiety, Stress, and Insomnia cards showing exact probabilities (`low`, `moderate`, `high`).
-- **Interactive Radar Chart**: Multi-axial risk comparison across all 4 dimensions.
-- **SHAP Factor Explorer**: Interactive bar chart displaying which clinical items contributed most to elevated risk.
-- **Detected Emotional Valence**: Primary and secondary emotions extracted from the journal note.
-- **AI Guidance**: Supportive coping strategies and clinician follow-up advice.
-- **Export Action**: 1-click button to download the entire analysis as a printable PDF report.
+```
+Stage 1: PHQ-9 (9 items)
+   │
+   ▼
+Stage 2: AI Clinical Deep-Dive (Targeted follow-ups based on PHQ-9 symptom clusters)
+   │
+   ▼
+Stage 3: GAD-7 (7 items)
+   │
+   ▼
+Stage 4: AI Clinical Deep-Dive (Targeted follow-ups based on GAD-7 symptom clusters)
+   │
+   ▼
+Stage 5: Sleep Profile (Insomnia Severity Index - ISI, 7 items)
+   │
+   ▼
+Stage 6: Demographics & Reflection Journal (DistilBERT NLP note)
+```
 
-### 4. Longitudinal History (`app/history/page.tsx`)
-- Historical comparison chart plotting wellness scores, depression trends, and anxiety levels over weekly/monthly assessments.
-- Tabular record of all past evaluations with links to review past recommendations.
+- **Stage 1 (PHQ-9 Standard)**:
+  - 9 standardized depression questions (0–3 scale).
+  - Preserves standard clinical sum score (0–27).
+- **Stage 2 (PHQ-9 AI Deep-Dive)**:
+  - Automatically identifies symptom clusters: **Somatic/Sleep Fatigue** (`Q3, Q4`), **Cognitive Self-Criticism** (`Q2, Q6`), **Anhedonia** (`Q1, Q7`), or **Crisis Gate** (`Q9`).
+  - Displays an **AI Clinical Observation Banner** explaining why specific follow-ups were generated.
+  - Presents targeted questions probing functional impairment and daytime impact.
+  - Skips deep-dives smoothly if minimal symptoms are reported.
+- **Stage 3 (GAD-7 Standard)**:
+  - 7 standardized generalized anxiety questions (0–3 scale).
+  - Preserves standard clinical sum score (0–21).
+- **Stage 4 (GAD-7 AI Deep-Dive)**:
+  - Analyzes anxiety symptom clusters: **Metacognitive Rumination** (`Q1, Q2, Q3`), **Somatic Tension** (`Q4, Q5`), or **Panic/Autonomic Dread** (`Q6, Q7`).
+  - Generates targeted follow-up inquiries.
+- **Stage 5 (Sleep Assessment - ISI)**:
+  - Complete 7-item Insomnia Severity Index evaluating sleep-onset latency, nocturnal awakenings, early awakenings, sleep dissatisfaction, noticeability to others, distress, and daytime interference (0–28 scale).
+- **Stage 6 (Demographics & Free-Text Journal)**:
+  - Age group, gender, education, and living context.
+  - Free-text reflection prompt enabling patients to express their thoughts for DistilBERT NLP sentiment and emotion extraction.
 
-### 5. Clinician Dashboard (`app/clinician/page.tsx`)
-- Role-gated dashboard designed for healthcare providers.
-- Summary metrics: Total active patients, high-risk flags, average cohort wellness.
-- Search and filter patients by risk level (`High`, `Moderate`, `Low`).
-- Patient drill-down to review individual SHAP factor contributions before clinical consultations.
+---
+
+### 4.2 Results & Explainability (`app/results/page.tsx`)
+
+- **Crisis Intervention Banner**:
+  - Deterministic, zero-latency safety banner triggered whenever self-harm or critical distress items are endorsed.
+  - Displays 24/7 hotlines: **988 Suicide & Crisis Lifeline** (US/Canada), **Tele-MANAS 14416** (India), and **Crisis Text Line** (Text HOME to 741741).
+- **AI Stepped Adaptive Assessment Insights Card**:
+  - Summarizes the symptom clusters identified during screening.
+  - Displays the exact dynamic follow-up questions asked and the patient's selected responses.
+- **Evaluation Mode Indicator**:
+  - Transparently indicates whether results were processed by the **Multimodal AI Pipeline** (XGBoost + DistilBERT + ISI) or the **Standard Clinical Scoring** fallback engine.
+- **Composite Score Dial**:
+  - High-visibility wellness score (0–100) with color-coded risk bands.
+- **Dimensional Breakdown**:
+  - Detailed cards for Depression, Anxiety, Stress, and Insomnia displaying exact categorical risk levels and multi-class probability distributions.
+- **Interactive Multi-Axial Radar Chart**:
+  - Compares the patient's severity levels across all 4 clinical dimensions on a single chart.
+- **SHAP Factor Explorer**:
+  - Horizontal bar chart showing the exact clinical factors pushing risk up or down, translated into human-readable language.
+- **Affective Emotion Analysis**:
+  - Highlights primary and secondary emotions extracted from the free-text journal entry.
+- **Actionable AI Coping Recommendations**:
+  - Evidence-based self-care exercises and structured clinical consultation guidance.
+- **1-Click Clinical PDF Export**:
+  - Generates a clean, printable medical report formatted for sharing with therapists or physicians.
+
+---
+
+### 4.3 Clinician Dashboard & Triage System (`app/clinician/page.tsx`)
+
+- **Role-Based Access Control**:
+  - Accessible only to authenticated clinicians (`role: 'clinician'`).
+  - Unauthorized users are prevented from viewing or accessing patient records.
+- **Clinician Header & Connect Code Widget**:
+  - Displays verified clinician profile: Medical License Number, Specialty, and Hospital/Clinic Affiliation.
+  - Prominently features the clinician's **Connect Code** (e.g. `DR-SARAH-782`) with a 1-click clipboard copy button to share with patients.
+- **Cohort Summary Metrics**:
+  - Quick-glance cards: Total Linked Patients, Active Crisis Alerts, High-Risk Patients, and Cohort Average Score.
+- **Prioritized Clinical Triage Roster**:
+  - Patients are automatically sorted with **Crisis Alert flags pinned to the top**, followed by high risk, moderate risk, and recent assessments.
+  - Filterable by risk category (`All`, `High Risk`, `Crisis Only`).
+  - Searchable by patient name or email.
+- **Interactive Clinical Chart Modal**:
+  - Clicking any patient opens a comprehensive medical chart showing:
+    * Full longitudinal wellness timeline.
+    * Comparative radar chart.
+    * Dimensional risk breakdown (Depression, Anxiety, Stress, Insomnia).
+    * Primary driving SHAP factors.
+    * Latest free-text journal note and detected emotional valence.
+
+---
+
+### 4.4 Dual Registration & Provider Linkage (`app/register/page.tsx` & `app/profile/page.tsx`)
+
+- **Dual Registration Form (`/register`)**:
+  - Clean segmented toggle:
+    * **Individual / Patient**: Basic credentials + optional Clinician Connect Code to link to their doctor during signup.
+    * **Licensed Clinician**: Requires medical license number, practice specialty, and hospital/clinic affiliation. Automatically generates a connect code upon creation.
+- **Connected Healthcare Provider Card (`/profile`)**:
+  - For patients: Displays currently assigned clinician details or allows entering a doctor's code to link accounts immediately.
+  - For clinicians: Displays credentials and connect code.
 
 ---
 
 ## 5. State Management & API Communication
 
 ### Authentication State (`contexts/AuthContext.tsx`)
-- Persists user information and JWT tokens in `localStorage`.
+- Manages user sessions, JWT tokens, and user metadata in `localStorage`.
+- Exposes helper properties (`isAuthenticated`, `isClinician`, `user`, `login`, `register`, `logout`).
 - Automatically attaches `Authorization: Bearer <token>` to outbound requests in `lib/api.ts`.
-- Manages user roles: `user` (patient) vs `clinician`.
 
-### Backend API Configuration (`lib/api.ts`)
-- Communicates with the Node.js backend using a single environment variable:
+### Centralized API Client (`lib/api.ts`)
+- Configured via environment variable:
   ```typescript
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   ```
-- In production, this points to your deployed backend (e.g. `https://neuracare-backend.onrender.com`).
-- Handles response caching, error toast alerts, and automatic redirects on expired tokens (HTTP 401).
+- Fully typed interfaces for all payloads:
+  * `ClinicianProfile`, `ClinicianPatient`, `CohortSummary`
+  * `SectionAdaptiveAnalysis`, `AdaptiveFollowupQuestion`
+  * `AssessmentSubmission`, `RiskResult`, `ShapExplanation`
+- Automatic error handling, toast alerts, and session expiration handling (HTTP 401).

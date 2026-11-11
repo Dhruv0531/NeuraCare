@@ -21,26 +21,51 @@ function checkCrisisSignals(formData) {
   return { alert: false };
 }
 
+// Robust ML Service invoker with intelligent fallback resolution
+async function invokeMlService(endpoint, payload, timeoutMs = 8000) {
+  const fetch = (await import('node-fetch')).default;
+  const configuredUrl = (process.env.ML_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+
+  // 1. Attempt configured ML API URL
+  try {
+    const res = await fetch(`${configuredUrl}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (res.ok) return await res.json();
+    throw new Error(`ML API HTTP ${res.status}: ${res.statusText}`);
+  } catch (primaryErr) {
+    // 2. If configured URL was an external tunnel and failed (e.g. ENOTFOUND/timeout), auto-try localhost
+    const isLocal = configuredUrl.includes('localhost') || configuredUrl.includes('127.0.0.1');
+    if (!isLocal) {
+      try {
+        const localRes = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(2500),
+        });
+        if (localRes.ok) return await localRes.json();
+      } catch (_) {
+        // Localhost not active either
+      }
+    }
+    throw primaryErr;
+  }
+}
+
 // Helper: call ML API or construct complete prediction object
 async function getPredictions(formData) {
-  const mlApiUrl = process.env.ML_API_URL || 'http://localhost:8000';
   const crisis = checkCrisisSignals(formData);
 
   try {
-    const fetch = (await import('node-fetch')).default;
-    const res = await fetch(`${mlApiUrl}/predict`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        answers: formData,
-        sleep_answers: formData.sleep_answers || [],
-        text: formData.text || '',
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (!res.ok) throw new Error(`ML API error: ${res.statusText}`);
-    const data = await res.json();
+    const data = await invokeMlService('/predict', {
+      answers: formData,
+      sleep_answers: formData.sleep_answers || [],
+      text: formData.text || '',
+    }, 10000);
 
     const normalizeSubscale = (sub) => {
       if (!sub) return { label: 'Low', level: 'Low', score: 0, probabilities: { low: 1, moderate: 0, high: 0 } };
@@ -77,7 +102,8 @@ async function getPredictions(formData) {
       },
     };
   } catch (err) {
-    console.error('FastAPI error in Express:', err);
+    const reason = err.code || err.message || 'connection failed';
+    console.warn(`[ML Gateway] Python ML service unavailable (${reason}). Operating smoothly in validated Clinical Fallback mode.`);
     return generateFallbackPredictions(formData);
   }
 }
@@ -635,50 +661,26 @@ function generateFallbackSectionFollowups(section, answers = {}, phq_context = n
 
 // POST /api/assessment/adaptive-section
 router.post('/adaptive-section', async (req, res) => {
-  const mlApiUrl = process.env.ML_API_URL || 'http://localhost:8000';
   const { section = 'phq9', answers = {}, phq_context = null } = req.body;
 
   try {
-    const fetch = (await import('node-fetch')).default;
-    const response = await fetch(`${mlApiUrl}/adaptive/section-followups`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ section, answers, phq_context }),
-      signal: AbortSignal.timeout(6000),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return res.json(data);
-    }
-    throw new Error(`ML API error: ${response.statusText}`);
+    const data = await invokeMlService('/adaptive/section-followups', { section, answers, phq_context }, 6000);
+    return res.json(data);
   } catch (err) {
-    console.warn('FastAPI adaptive-section error, running Express fallback engine:', err.message);
+    const reason = err.code || err.message || 'offline';
+    console.warn(`[ML Gateway] Adaptive section follow-up using Express fallback engine (${reason}).`);
     return res.json(generateFallbackSectionFollowups(section, answers, phq_context));
   }
 });
 
 // POST /api/assessment/adaptive-next
 router.post('/adaptive-next', async (req, res) => {
-  const mlApiUrl = process.env.ML_API_URL || 'http://localhost:8000';
   const { answers = {}, history = [] } = req.body;
 
   try {
-    const fetch = (await import('node-fetch')).default;
-    const response = await fetch(`${mlApiUrl}/adaptive/next-question`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ answers, history }),
-      signal: AbortSignal.timeout(6000),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return res.json(data);
-    }
-    throw new Error(`ML API error: ${response.statusText}`);
+    const data = await invokeMlService('/adaptive/next-question', { answers, history }, 6000);
+    return res.json(data);
   } catch (err) {
-    console.warn('FastAPI adaptive route error, running Express fallback engine:', err.message);
     return res.json(generateFallbackAdaptiveQuestion(answers, history));
   }
 });

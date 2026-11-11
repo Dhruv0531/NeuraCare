@@ -46,8 +46,8 @@ class EmotionService:
         try:
             from transformers import AutoTokenizer, AutoModelForSequenceClassification
             print(f"Loading local GoEmotions DistilBERT model from {model_dir} on {self.device}...")
-            self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
-            self.model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
+            self.model = AutoModelForSequenceClassification.from_pretrained(model_dir, local_files_only=True)
             self.model.to(self.device)
             self.model.eval()
             self.is_available = True

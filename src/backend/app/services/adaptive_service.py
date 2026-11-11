@@ -4,8 +4,10 @@ import urllib.request
 import urllib.error
 from typing import Dict, List, Any, Optional
 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "liquid/lfm-2.5-2.6b:free")
 
 SCALE_4_SEVERITY = ['Not at all', 'Slightly / Several days', 'Moderately / More than half the days', 'Extremely / Nearly every day']
 
@@ -181,22 +183,13 @@ FALLBACK_GAD_CLUSTERS = {
 
 def _call_openrouter_for_questions(system_context: str, user_prompt: str) -> Optional[List[Dict[str, Any]]]:
     """
-    Calls OpenRouter LLM to generate 1-2 empathetic, highly personalized follow-up questions
-    grounded in clinical psychology.
+    Calls Gemini (or OpenRouter fallback) LLM to generate 1-2 empathetic, highly personalized
+    follow-up questions grounded in clinical psychology.
     """
+    gemini_key = os.getenv("GEMINI_API_KEY", GEMINI_API_KEY)
+    gemini_model = os.getenv("GEMINI_MODEL", GEMINI_MODEL)
     api_key = os.getenv("OPENROUTER_API_KEY", OPENROUTER_API_KEY)
     model = os.getenv("OPENROUTER_MODEL", OPENROUTER_MODEL)
-
-    if not api_key:
-        return None
-
-    candidate_models = [model, "meta-llama/llama-3.3-70b-instruct:free", "liquid/lfm-2.5-2.6b:free"]
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://neuracare.ai",
-        "X-Title": "NeuraCare Stepped Adaptive Assessment"
-    }
 
     prompt = f"""{system_context}
 
@@ -218,34 +211,78 @@ Rules:
 4. No diagnosis or medical advice. Return valid JSON only.
 """
 
-    for m in candidate_models:
-        if not m:
-            continue
-        try:
-            req = urllib.request.Request(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                data=json.dumps({
-                    "model": m,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 300,
-                    "temperature": 0.4
-                }).encode("utf-8")
-            )
-            with urllib.request.urlopen(req, timeout=6) as response:
-                result = json.loads(response.read().decode("utf-8"))
-                content = result["choices"][0]["message"]["content"].strip()
-                # Clean markdown backticks if present
-                if content.startswith("```"):
-                    content = content.split("```")[1]
-                    if content.startswith("json"):
-                        content = content[4:]
-                content = content.strip()
-                parsed = json.loads(content)
-                if isinstance(parsed, list) and len(parsed) > 0 and "text" in parsed[0]:
-                    return parsed[:2]
-        except Exception as e:
-            print(f"OpenRouter adaptive generation error with model {m}: {e}")
+    # 1. Try Google Gemini API if key is present
+    if gemini_key:
+        candidates = [gemini_model, "gemini-3.5-flash-lite"]
+        seen = set()
+        unique_gemini = [m for m in candidates if m and not (m in seen or seen.add(m))]
+
+        payload = json.dumps({
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.3,
+                "maxOutputTokens": 400,
+                "responseMimeType": "application/json"
+            }
+        }).encode("utf-8")
+
+        for gm in unique_gemini:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{gm}:generateContent?key={gemini_key}"
+                req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(req, timeout=12.0) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    if text.startswith("```"):
+                        text = text.split("```")[1]
+                        if text.startswith("json"):
+                            text = text[4:]
+                    text = text.strip()
+                    parsed = json.loads(text)
+                    if isinstance(parsed, list) and len(parsed) > 0 and "text" in parsed[0]:
+                        print(f"Generated adaptive questions using Gemini ({gm})")
+                        return parsed[:2]
+            except Exception as e:
+                print(f"Gemini adaptive generation notice with model {gm}: {e}")
+
+    # 2. Try OpenRouter if key is present
+    if api_key:
+        candidate_models = [model, "meta-llama/llama-3.3-70b-instruct:free", "liquid/lfm-2.5-2.6b:free"]
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://neuracare.ai",
+            "X-Title": "NeuraCare Stepped Adaptive Assessment"
+        }
+
+        for m in candidate_models:
+            if not m:
+                continue
+            try:
+                req = urllib.request.Request(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers=headers,
+                    data=json.dumps({
+                        "model": m,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "max_tokens": 300,
+                        "temperature": 0.4
+                    }).encode("utf-8")
+                )
+                with urllib.request.urlopen(req, timeout=6) as response:
+                    result = json.loads(response.read().decode("utf-8"))
+                    content = result["choices"][0]["message"]["content"].strip()
+                    if content.startswith("```"):
+                        content = content.split("```")[1]
+                        if content.startswith("json"):
+                            content = content[4:]
+                    content = content.strip()
+                    parsed = json.loads(content)
+                    if isinstance(parsed, list) and len(parsed) > 0 and "text" in parsed[0]:
+                        print(f"Generated adaptive questions using OpenRouter ({m})")
+                        return parsed[:2]
+            except Exception as e:
+                print(f"OpenRouter adaptive generation error with model {m}: {e}")
 
     return None
 

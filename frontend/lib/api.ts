@@ -98,7 +98,7 @@ export const api = {
           },
           recommendations: data.recommendations || [],
         } as Assessment;
-      } catch (fastApiErr) {
+      } catch {
         throw new Error('Backend connection failed. Please ensure FastAPI (port 8000) or Express (port 5000) is running.');
       }
     }

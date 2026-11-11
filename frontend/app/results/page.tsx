@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { RotateCcw, HelpCircle, Sparkles, Moon, Lightbulb, CheckCircle2, BarChart2, Brain } from 'lucide-react';
+import { RotateCcw, Sparkles, Moon, Lightbulb, CheckCircle2, BarChart2, Brain } from 'lucide-react';
 import Disclaimer from '@/components/Disclaimer';
 import RiskBadge from '@/components/RiskBadge';
 import RadarChartComponent from '@/components/RadarChartComponent';
 import ClinicalReportExport from '@/components/ClinicalReportExport';
 import LongitudinalTrendChart from '@/components/LongitudinalTrendChart';
 import ShapImpactChart from '@/components/ShapImpactChart';
-import { api, Assessment, EmotionData, SleepData, ShapExplanation } from '@/lib/api';
+import { api, Assessment, EmotionData, SleepData } from '@/lib/api';
 
 const CONDITIONS = [
   { key: 'depression', label: 'Depression', questionnaire: 'PHQ-9 / DASS' },

@@ -1,12 +1,12 @@
 # NeuraCare Machine Learning & AI Architecture
 
-This document provides a comprehensive, end-to-end explanation of the AI/ML architecture powering NeuraCare. It details how multiple models work together to assess mental health risks, extract emotional context, generate explainable insights, and produce clinical recommendations.
+This document provides a comprehensive, end-to-end explanation of the AI/ML architecture powering NeuraCare. It details how multiple models work together to assess mental health risks, extract emotional context, generate explainable insights, conduct stepped adaptive screening, and produce clinical recommendations.
 
 ---
 
 ## 1. High-Level AI/ML Overview
 
-NeuraCare does not rely on a single model. Instead, it utilizes a **multi-model hybrid ensemble** combining classical tabular machine learning, deep NLP transformers, explainable AI (XAI), and large language models (LLMs):
+NeuraCare does not rely on a single model. Instead, it utilizes a **multi-model hybrid ensemble** combining classical tabular machine learning, deep NLP transformers, explainable AI (XAI), computerized adaptive testing (CAT), and large language models (LLMs):
 
 ```
                         ┌──────────────────────────────────────┐
@@ -14,29 +14,38 @@ NeuraCare does not rely on a single model. Instead, it utilizes a **multi-model 
                         │  (Questionnaires + Journal Entry)    │
                         └──────────────────┬───────────────────┘
                                            │
-                   ┌───────────────────────┴───────────────────────┐
-                   ▼                                               ▼
-     ┌───────────────────────────┐                   ┌───────────────────────────┐
-     │  Tabular Questionnaire    │                   │   Free-Text Journal Note  │
-     │  (DASS-42 / PHQ-9 / GAD-7)│                   │      (User Expression)    │
-     └─────────────┬─────────────┘                   └─────────────┬─────────────┘
-                   │                                               │
-                   ▼                                               ▼
-     ┌───────────────────────────┐                   ┌───────────────────────────┐
-     │  3x XGBoost Classifiers   │                   │ DistilBERT Emotion Model  │
-     │  - Depression Risk        │                   │ (Fine-Tuned GoEmotions)   │
-     │  - Anxiety Risk           │                   │ - 27 Fine-Grained Emotions│
-     │  - Stress Risk            │                   │ - Valence & Intensity     │
-     └─────────────┬─────────────┘                   └─────────────┬─────────────┘
-                   │                                               │
-                   ▼                                               │
-     ┌───────────────────────────┐                                 │
-     │    SHAP TreeExplainer     │                                 │
-     │ - Exact Feature Impact    │                                 │
-     │ - Clinical Factor Ranking │                                 │
-     └─────────────┬─────────────┘                                 │
-                   │                                               │
-                   └───────────────────────┬───────────────────────┘
+       ┌───────────────────────────────────┼───────────────────────────────────┐
+       ▼                                   ▼                                   ▼
+┌───────────────────────────┐┌───────────────────────────┐┌───────────────────────────┐
+│  Standard Questionnaires  ││ Stepped Adaptive Engine   ││   Free-Text Journal Note  │
+│  - PHQ-9 (Depression)     ││ (Two-Stage Symptom CAT)   ││      (User Expression)    │
+│  - GAD-7 (Anxiety)        ││ - Cluster Identification  │└─────────────┬─────────────┘
+│  - ISI (Insomnia)         ││ - Dynamic LLM Follow-ups  │              │
+└─────────────┬─────────────┘└─────────────┬─────────────┘              │
+              │                            │                            │
+              ▼                            ▼                            ▼
+┌───────────────────────────┐┌───────────────────────────┐┌───────────────────────────┐
+│  3x XGBoost Classifiers   ││ Contextual Cluster Deep-  ││ DistilBERT Emotion Model  │
+│  - Depression Risk        ││ Dive Data (Saved with     ││ (Fine-Tuned GoEmotions)   │
+│  - Anxiety Risk           ││ Assessment Payload)       ││ - 27 Fine-Grained Emotions│
+│  - Stress Risk            │└───────────────────────────┘│ - Valence & Intensity     │
+└─────────────┬─────────────┘                             └─────────────┬─────────────┘
+              │                                                         │
+              ▼                                                         │
+┌───────────────────────────┐                                           │
+│    SHAP TreeExplainer     │                                           │
+│ - Exact Feature Impact    │                                           │
+│ - Clinical Factor Ranking │                                           │
+└─────────────┬─────────────┘                                           │
+              │                                                         │
+              └────────────────────────────┬────────────────────────────┘
+                                           │
+                                           ▼
+                             ┌───────────────────────────┐
+                             │ Multimodal Fusion Engine  │
+                             │ (Questionnaire + NLP      │
+                             │  + Somatic Sleep Index)   │
+                             └─────────────┬─────────────┘
                                            │
                                            ▼
                              ┌───────────────────────────┐
@@ -168,7 +177,105 @@ To translate raw risk levels, SHAP factors, and emotion clusters into personaliz
 
 ---
 
-## 6. Multimodal Fusion Engine: Combining Modalities
+## 6. Model 5: Stepped Adaptive Questioning Engine (Method A)
+
+### Why Stepped Adaptive Screening?
+Traditional mental health surveys suffer from two extremes:
+1. **Static Monolithic Surveys**: Require patients to answer long, repetitive batteries where many questions feel irrelevant.
+2. **Item-by-Item Computerized Adaptive Testing (CAT)**: While mathematically efficient, item-by-item CAT terminates questions early, destroying standard psychometric sum scores (e.g., losing the official 0–27 PHQ-9 or 0–21 GAD-7 scores that psychiatrists and insurance bodies rely upon).
+
+NeuraCare implements **Method A: Section-Level Stepped Adaptive Screening (Two-Stage CAT)**:
+- **Stage 1 (Standard Psychometric Core)**: The user completes all items of a validated scale (PHQ-9 or GAD-7), preserving the standard clinical sum score and diagnostic cutoff validity.
+- **Stage 2 (Contextual Cluster Deep-Dive)**: The engine analyzes the complete item profile across clinically distinct symptom clusters. If elevated distress is detected in a specific domain, the system triggers dynamic, personalized follow-up questions tailored to that exact symptom profile.
+
+```
+┌────────────────────────────────────────────────────────┐
+│           Section 1: Standard PHQ-9 (9 items)          │
+│              Total Score: 0 - 27 Preserved             │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│        Symptom Cluster Identification Algorithm        │
+│ - Somatic/Sleep Fatigue: Items 3, 4                     │
+│ - Cognitive Self-Criticism: Items 2, 6                 │
+│ - Anhedonia / Social Withdrawal: Items 1, 7            │
+│ - Crisis Gate: Item 9                                  │
+└───────────────────────────┬────────────────────────────┘
+                            │
+               ┌────────────┴────────────┐
+               ▼                         ▼
+   Score <= 4 (Minimal)         Score >= 5 (Mild/Mod/High)
+   Smoothly advances to         Selects Dominant Cluster
+   next section (GAD-7)         & Generates Follow-Ups
+                                         │
+                                         ▼
+                        ┌─────────────────────────────────┐
+                        │ Dynamic Deep-Dive Generation    │
+                        │ - Primary: OpenRouter LLM       │
+                        │ - Fallback: Offline Templates   │
+                        └─────────────────────────────────┘
+```
+
+---
+
+### 6.1 Clinical Symptom Cluster Taxonomy
+
+The engine (`src/backend/app/services/adaptive_service.py`) groups questionnaire items into validated psychiatric clusters:
+
+#### PHQ-9 Clusters (Depression)
+1. **Somatic / Sleep Fatigue (`somatic_fatigue`)**:
+   - Items: `Q3` (Sleep disturbances) + `Q4` (Tiredness / low energy).
+   - Clinical Focus: Circadian dysregulation, physical exhaustion, daytime drowsiness, and motor sluggishness.
+   - Follow-up Inquiries: Probes whether fatigue interferes with daytime occupational tasks, if caffeine/stimulants are relied upon, and sleep hygiene factors.
+2. **Cognitive Self-Criticism (`cognitive_worth`)**:
+   - Items: `Q2` (Feeling down/hopeless) + `Q6` (Feeling bad about oneself/failure).
+   - Clinical Focus: Internalized negative cognitive bias, imposter feelings, guilt, and perceived worthlessness.
+   - Follow-up Inquiries: Explores triggers for self-critical internal dialogue and emotional recovery patterns.
+3. **Anhedonia & Motivational Deficit (`anhedonia`)**:
+   - Items: `Q1` (Little interest or pleasure) + `Q7` (Trouble concentrating).
+   - Clinical Focus: Reward system blunting, apathy, procrastination, and concentration disruption.
+   - Follow-up Inquiries: Probes when enjoyment was last experienced and social withdrawal habits.
+4. **Crisis Gate (`crisis_gate`)**:
+   - Items: `Q9` (Thoughts of being better off dead or hurting oneself).
+   - Clinical Focus: Acute safety triage. Triggers deterministic crisis banner and emergency resources.
+
+#### GAD-7 Clusters (Anxiety)
+1. **Metacognitive Rumination (`rumination`)**:
+   - Items: `Q1` (Nervous/anxious) + `Q2` (Uncontrolled worrying) + `Q3` (Worrying about too many things).
+   - Clinical Focus: Intrusive thought loops, catastrophe forecasting, and inability to inhibit worry.
+   - Follow-up Inquiries: Probes duration of worry spirals and mental techniques used to attempt disengagement.
+2. **Somatic Tension (`somatic_tension`)**:
+   - Items: `Q4` (Trouble relaxing) + `Q5` (Restlessness, fidgeting).
+   - Clinical Focus: Autonomic hyperarousal, muscle tightness, jaw clenching, and physical agitation.
+   - Follow-up Inquiries: Evaluates bodily manifestations of stress and physical relaxation difficulty.
+3. **Panic Apprehension / Dread (`panic_dread`)**:
+   - Items: `Q6` (Irritability) + `Q7` (Feeling afraid as if something awful might happen).
+   - Clinical Focus: Sudden autonomic dread, impending doom, shortness of breath, and emotional hyper-reactivity.
+   - Follow-up Inquiries: Probes frequency of acute panic sensations and physiological hyperventilation/palpitations.
+
+---
+
+### 6.2 Dual-Path Generation Architecture
+
+To ensure clinical utility without sacrificing uptime, the Stepped Adaptive Engine employs a **dual-path design**:
+
+1. **Path A — Generative AI Prompting (OpenRouter LLM)**:
+   - When external LLM inference is available, the engine constructs a clinical prompt specifying:
+     * Patient's total scale score and severity category.
+     * The identified dominant symptom cluster.
+     * Specific high-scoring items.
+   - The LLM is instructed via strict JSON schema to generate:
+     * `clusterSummary`: A compassionate, 1-to-2 sentence observation explaining the pattern.
+     * `followups`: 1 to 2 targeted multiple-choice questions with 4 graduated ordinal choices (0 to 3) assessing functional impairment.
+2. **Path B — Offline Deterministic Fallback Engine**:
+   - If the LLM call times out, encounters rate limits, or is offline, the system immediately switches to pre-calibrated clinical templates.
+   - Every symptom cluster has pre-authored, clinically vetted questions and summaries ready to return in under 5 milliseconds.
+   - The user experience remains uninterrupted, fast, and completely seamless.
+
+---
+
+## 7. Multimodal Fusion Engine: Combining Modalities
 
 Single-modality mental health assessments frequently suffer from self-reporting noise and context blind spots. NeuraCare implements a **Weighted Late-Fusion Engine** (`ml_service.py:fuse_predictions`) that integrates structured questionnaire predictions, deep linguistic emotion signals, and somatic sleep indices.
 
@@ -189,7 +296,7 @@ Single-modality mental health assessments frequently suffer from self-reporting 
          │                    Weighted Late-Fusion Heuristic Engine                    │
          │  1. Compute Net Emotion: RawDistress - (0.6 * ProtectiveScore)             │
          │  2. Compute Risk Shift: Δ = (w_emotion * NetEmotion) + (w_sleep * Δ_sleep) │
-         │  3. Clamp Δ to [-0.35, +0.35] (Mathematical range ~ [-0.25, +0.33])         │
+         │  3. Clamp Δ to [-0.35, +0.35]                                              │
          │  4. Recalibrate & Re-normalize Probabilities (Σ P = 1.0)                    │
          │  5. Dynamically Inject NLP & Sleep Factors into Unified SHAP Table          │
          └──────────────────────────────────────┬──────────────────────────────────────┘
@@ -203,7 +310,9 @@ Single-modality mental health assessments frequently suffer from self-reporting 
                                └────────────────────────────────┘
 ```
 
-### 6.1 Modality Characteristics
+---
+
+### 7.1 Modality Characteristics
 
 | Modality | Inherent Limitation | How Multimodal Integration Helps |
 | :--- | :--- | :--- |
@@ -213,7 +322,7 @@ Single-modality mental health assessments frequently suffer from self-reporting 
 
 ---
 
-### 6.2 The Mathematical Fusion Mechanism
+### 7.2 The Mathematical Fusion Mechanism
 
 For each psychiatric scale ($S \in \{\text{Depression}, \text{Anxiety}, \text{Stress}\}$), the engine executes:
 
@@ -240,7 +349,7 @@ $$\Delta_{\text{sleep}} = \left(\frac{\text{ISI}}{28.0}\right) - 0.25$$
 #### Step 4: Compute Combined Shift Delta
 The net shift $\Delta$ is computed using preset heuristic weights:
 $$\Delta = (w_{\text{emotion}} \times \text{NetEmotion}) + (w_{\text{sleep}} \times \Delta_{\text{sleep}})$$
-*(With max emotion weight $0.22$ and max sleep weight $0.15 \times 0.75$, the mathematical maximum possible $\Delta \approx 0.3325$).*
+*(clamped to $[-0.35, +0.35]$)*
 
 | Scale | Emotion Weight ($w_{\text{emotion}}$) | Sleep Weight ($w_{\text{sleep}}$) |
 | :--- | :---: | :---: |
@@ -258,45 +367,11 @@ $$\Delta = (w_{\text{emotion}} \times \text{NetEmotion}) + (w_{\text{sleep}} \ti
   $$P(\text{Moderate})' = \max(0.01, P(\text{Moderate}) - 0.5 \times |\Delta|)$$
   $$P(\text{High})' = \max(0.01, P(\text{High}) - 0.5 \times |\Delta|)$$
 - Probabilities are re-normalized so $\sum P' = 1.0$.
-- Risk classification assigns: High if $P(\text{High})' \ge 0.40$ or dominant, Moderate if $P(\text{Moderate})' \ge 0.35$ or dominant, else Low.xtract Affective Emotion Signals
-DistilBERT analyzes the user's free-text journal entry across 27 emotions. These are clustered into clinical distress and protective categories:
-
-- **Depression Distress Cluster**: `sadness` (1.0), `grief` (1.0), `disappointment` (0.7), `remorse` (0.6), `embarrassment` (0.4)
-- **Anxiety Distress Cluster**: `fear` (1.0), `nervousness` (1.0), `confusion` (0.5), `embarrassment` (0.4)
-- **Stress Distress Cluster**: `anger` (1.0), `annoyance` (0.9), `disgust` (0.6), `nervousness` (0.6)
-- **Protective / Resilient Cluster**: `joy` (0.9), `optimism` (0.9), `gratitude` (0.8), `relief` (0.8), `love` (0.7), `pride` (0.6), `admiration` (0.5)
-
-The **Net Emotional Distress** balances vulnerability against resilience:
-$$\text{NetEmotion} = \text{Distress} - (0.6 \times \text{ProtectiveScore})$$
-*(clamped to $[-1.0, +1.0]$)*
-
-#### Step 3: Compute Somatic Sleep Offset
-The Insomnia Severity Index (ISI, 0–28 scale) is normalized against an asymptomatic baseline ($7/28 = 0.25$):
-$$\Delta_{\text{sleep}} = \left(\frac{\text{ISI}}{28.0}\right) - 0.25$$
-
-#### Step 4: Calibrate the Combined Shift Delta
-The net shift $\Delta$ is computed using clinically calibrated modality weights:
-$$\Delta = (w_{\text{emotion}} \times \text{NetEmotion}) + (w_{\text{sleep}} \times \Delta_{\text{sleep}})$$
-*(clamped to $[-0.35, +0.35]$ to prevent extreme single-modality distortion)*
-
-| Scale | Emotion Weight ($w_{\text{emotion}}$) | Sleep Weight ($w_{\text{sleep}}$) |
-| :--- | :---: | :---: |
-| **Depression** | $0.22$ | $0.14$ |
-| **Anxiety** | $0.22$ | $0.12$ |
-| **Stress** | $0.20$ | $0.15$ |
-
-#### Step 5: Probability Recalibration & Normalization
-- If $\Delta > 0$ (Elevated Distress / Severe Sleep Deprivation):
-  $$P(\text{High})' = P(\text{High}) + (0.65 \times \Delta)$$
-  $$P(\text{Moderate})' = P(\text{Moderate}) + (0.35 \times \Delta)$$
-  $$P(\text{Low})' = \max(0.01, P(\text{Low}) - \Delta)$$
-- If $\Delta < 0$ (High Resilience / Healthy Sleep):
-  Probability mass smoothly shifts toward $P(\text{Low})'$.
-- Probabilities are re-normalized so $\sum P' = 1.0$.
+- Risk classification assigns: High if $P(\text{High})' \ge 0.40$ or dominant, Moderate if $P(\text{Moderate})' \ge 0.35$ or dominant, else Low.
 
 ---
 
-### 6.3 Unified Multimodal Explainability (XAI)
+## 8. Unified Multimodal Explainability (XAI)
 
 When multiple models are fused, explainability must not be lost. NeuraCare dynamically injects calibrated multimodal factors directly into the SHAP explanation table:
 
@@ -307,7 +382,7 @@ This enables clinicians to see both tabular survey drivers (e.g. *"Feeling sad a
 
 ---
 
-## 7. Offline / Fallback Resiliency Mode
+## 9. Offline / Fallback Resiliency Mode
 
 Healthcare applications must not crash when an ML server is cold or restarting.
 
@@ -318,7 +393,7 @@ If the Python ML service is unreachable (e.g., tunnel offline or model reloading
 
 ---
 
-## 8. Directory Structure of the ML Service
+## 10. Directory Structure of the ML Service
 
 ```
 src/backend/
@@ -336,10 +411,11 @@ src/backend/
 │   │   ├── features_anxiety.pkl
 │   │   └── features_stress.pkl
 │   ├── routes/
-│   │   ├── predict.py             # /predict endpoint (orchestrates ML pipeline)
+│   │   ├── predict.py             # /predict & /adaptive/section-followups endpoints
 │   │   ├── health.py              # Health check endpoint
 │   │   └── history.py             # Historical evaluations
 │   └── services/
+│       ├── adaptive_service.py    # Stepped Adaptive Questioning Engine (Method A)
 │       ├── ml_service.py          # XGBoost + SHAP inference & item mapping
 │       ├── emotion_service.py     # DistilBERT GoEmotions inference
 │       ├── llm_recommendations.py # OpenRouter LLM clinical recommendations
